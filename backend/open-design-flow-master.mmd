@@ -1,0 +1,125 @@
+flowchart TD
+    %% ── ENTRY POINTS ──────────────────────────────────────────
+    User(["👤 User\n(Browser)"])
+    ExtAgent(["🤖 External Agent\n(Claude Code / Cursor\nin another repo)"])
+
+    %% ── WEB LAYER ─────────────────────────────────────────────
+    WebUI["📱 Web UI\nNext.js 16\napps/web"]
+
+    %% ── DAEMON ────────────────────────────────────────────────
+    Daemon["⚙️ Daemon\nNode 24 · Express\napps/daemon/src/server.ts"]
+
+    %% ── CONTEXT LOADING ───────────────────────────────────────
+    SkillReg["📚 Skill Registry\nlistSkills()\nskills/*/SKILL.md"]
+    DSReg["🎨 Design System Registry\nlistDesignSystems()\ndesign-systems/*/DESIGN.md"]
+    CraftLoader["🔧 Craft Loader\nloadCraftSections()\ncraft/*.md"]
+    SkillStage["📂 Skill Staging\nstageActiveSkill()\n.od/projects/<id>/.od-skills/<skillId>/"]
+
+    %% ── PROMPT ASSEMBLY ───────────────────────────────────────
+    PromptStack["🧩 Prompt Composer\ncomposeSystemPrompt()\napps/daemon/src/prompts/system.ts\n\nL1 DISCOVERY_AND_PHILOSOPHY\nL2 OFFICIAL_DESIGNER_PROMPT\nL3 DESIGN.md body\nL4 SKILL.md + preflight\nL5 Metadata block\nL6 Deck framework\nL7 Media contract\nL8 Critique addendum"]
+
+    %% ── AGENT SPAWN ───────────────────────────────────────────
+    SpawnDecision{{"Which\nagent?"}}
+    ClaudeCode["claude\n--output-format stream-json\n--add-dir .od-skills/"]
+    JsonAgents["codex / gemini\nopencode / cursor-agent\n(stdin prompt)"]
+    ACPAgents["hermes / kimi / kiro\nkilo / vibe-acp / devin\n(ACP JSON-RPC)"]
+    PiAgent["pi\n(pi-rpc JSON-RPC)"]
+    PlainAgents["qwen / deepseek\n(raw stdout)"]
+    BYOKProxy["🔑 BYOK Proxy\n/api/proxy/{provider}/stream\n(no CLI on PATH)"]
+
+    %% ── STREAM PARSERS ────────────────────────────────────────
+    ClaudeParser["claude-stream.ts\ncreateClaudeStreamHandler()\nJSONL line-by-line"]
+    JsonParser["json-event-stream.ts\ncreateJsonEventStreamHandler()\nper-CLI event map"]
+    ACPSession["acp.ts\nattachAcpSession()\nJSON-RPC over stdio"]
+    PiSession["pi-rpc.ts\nattachPiRpcSession()\ncustom JSON-RPC"]
+    PlainFwd["raw stdout\nchunk forwarding"]
+    BYOKParser["SSE normalizer\ndelta/end/error"]
+
+    %% ── UNIFIED EVENT BUS ─────────────────────────────────────
+    RunEmit["📡 Run Service\nruns.emit()\nSSE → Browser\n\nstatus · text_delta · thinking_delta\ntool_use · tool_result · usage · end"]
+
+    %% ── ARTIFACT PIPELINE ─────────────────────────────────────
+    ArtifactParser["🔍 Artifact Parser\nparser.ts\n&lt;artifact&gt; tag streaming"]
+    LintChecker["🧹 Lint Checker\nlintArtifact()\nP0/P1/P2 anti-slop rules"]
+    LintFeedback{{"P0\nfindings?"}}
+    PreviewIframe["🖼️ Preview Iframe\nsrcdoc render\nstandalone HTML"]
+
+    %% ── CRITIQUE THEATER ──────────────────────────────────────
+    Critique["🎭 Critique Theater\ncritique/orchestrator.ts\n5-dim scoring\nPhilosophy·Hierarchy\nDetail·Function·Innovation"]
+
+    %% ── STORAGE ───────────────────────────────────────────────
+    SQLite[("💾 SQLite\n.od/app.sqlite\nprojects · conversations\nmessages · tabs\ntemplates · deployments\npreview_comments")]
+    FileSystem[("📁 File System\n.od/projects/<id>/\nartifact HTML files\n.od-skills/ staged skills")]
+    MediaCfg[("🔐 media-config.json\n.od/media-config.json\nAPI keys — gitignored")]
+
+    %% ── MCP BRIDGE ────────────────────────────────────────────
+    MCPServer["🔌 MCP Server\n'od mcp' stdio\nmcp.ts\n8 read-only tools"]
+
+    %% ── EXPORT ────────────────────────────────────────────────
+    Export["📤 Export Pipeline\nHTML · PDF · PPTX\nZIP · Markdown"]
+
+    %% ── EDGES ─────────────────────────────────────────────────
+    User -->|"chat message"| WebUI
+    ExtAgent -->|"tools/call"| MCPServer
+
+    WebUI -->|"POST /api/chat"| Daemon
+    WebUI -->|"GET /api/skills"| SkillReg
+    WebUI -->|"GET /api/design-systems"| DSReg
+
+    MCPServer -->|"GET /api/projects/*"| Daemon
+    Daemon -->|"query"| SQLite
+
+    Daemon --> SkillReg
+    Daemon --> DSReg
+    Daemon --> CraftLoader
+    Daemon --> SkillStage
+    SkillReg & DSReg & CraftLoader & SkillStage --> PromptStack
+
+    PromptStack --> SpawnDecision
+
+    SpawnDecision -->|"claude"| ClaudeCode
+    SpawnDecision -->|"codex/gemini/opencode/cursor"| JsonAgents
+    SpawnDecision -->|"hermes/kimi/kiro/kilo/vibe/devin"| ACPAgents
+    SpawnDecision -->|"pi"| PiAgent
+    SpawnDecision -->|"qwen/deepseek"| PlainAgents
+    SpawnDecision -->|"no CLI found"| BYOKProxy
+
+    ClaudeCode -->|"JSONL stdout"| ClaudeParser
+    JsonAgents -->|"JSON stdout"| JsonParser
+    ACPAgents -->|"JSON-RPC stdio"| ACPSession
+    PiAgent -->|"JSON-RPC stdio"| PiSession
+    PlainAgents -->|"raw stdout"| PlainFwd
+    BYOKProxy -->|"SSE from API"| BYOKParser
+    BYOKProxy -->|"reads"| MediaCfg
+
+    ClaudeParser & JsonParser & ACPSession & PiSession & PlainFwd & BYOKParser --> RunEmit
+
+    RunEmit -->|"SSE stream"| WebUI
+    RunEmit --> ArtifactParser
+    ArtifactParser --> LintChecker
+    LintChecker --> LintFeedback
+    LintFeedback -->|"yes → self-correct"| RunEmit
+    LintFeedback -->|"no P0"| PreviewIframe
+    PreviewIframe --> WebUI
+
+    ClaudeCode & JsonAgents & ACPAgents & PiAgent & PlainAgents -->|"writes output.html"| FileSystem
+
+    Daemon -->|"saves message/artifact ref"| SQLite
+    Daemon --> Export
+    Daemon --> Critique
+    Critique -->|"scoring events"| RunEmit
+
+    %% ── STYLES ────────────────────────────────────────────────
+    classDef entryNode fill:#faece7,stroke:#c96442,color:#1a1916,font-weight:bold
+    classDef daemonNode fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    classDef agentNode fill:#f3f0e8,stroke:#706d65,color:#1a1916
+    classDef parserNode fill:#faeeda,stroke:#854f0b,color:#1a1916
+    classDef storageNode fill:#f0f0f0,stroke:#666,color:#1a1916
+    classDef outputNode fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+
+    class User,ExtAgent entryNode
+    class Daemon,SkillReg,DSReg,CraftLoader,SkillStage,PromptStack,RunEmit,MCPServer daemonNode
+    class ClaudeCode,JsonAgents,ACPAgents,PiAgent,PlainAgents,BYOKProxy agentNode
+    class ClaudeParser,JsonParser,ACPSession,PiSession,PlainFwd,BYOKParser parserNode
+    class SQLite,FileSystem,MediaCfg storageNode
+    class ArtifactParser,LintChecker,PreviewIframe,Export,Critique outputNode

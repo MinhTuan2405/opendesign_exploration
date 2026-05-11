@@ -1,0 +1,73 @@
+sequenceDiagram
+    autonumber
+    participant Browser as Browser (WebUI)
+    participant Daemon
+    participant PiRpc as PiRpcHandler (attachPiRpcSession)
+    participant PiCLI as Pi CLI Process
+
+    Browser->>Daemon: POST /api/chat { agentId:'pi', prompt, model, images:[] }
+    Daemon->>PiCLI: child_process.spawn('pi', args, { cwd:.od/projects/<id>/ })
+    Daemon->>PiRpc: attachPiRpcSession({ child, prompt, model, imagePaths })
+
+    rect rgb(230, 240, 255)
+        Note over PiRpc,PiCLI: Pi RPC handshake
+        PiRpc->>PiCLI: stdin: { jsonrpc:'2.0', method:'initialize' }
+        PiCLI-->>PiRpc: stdout: { ok: true }
+        PiRpc->>PiCLI: stdin: { method:'session/new' }
+        PiCLI-->>PiRpc: stdout: { sessionId: '...' }
+        PiRpc->>PiCLI: stdin: { method:'session/set_model', params:{ model } }
+        PiCLI-->>PiRpc: stdout: { ok: true }
+    end
+
+    rect rgb(230, 255, 230)
+        Note over PiRpc: Image validation (if imagePaths provided)
+        PiRpc->>PiRpc: realpath check (must be inside uploadRoot)
+        PiRpc->>PiRpc: count check (≤ 10 files)
+        PiRpc->>PiRpc: total size check (≤ 20 MB)
+        PiRpc->>PiRpc: extension check (allowed MIME types only)
+        PiRpc->>PiRpc: base64-encode each approved image
+    end
+
+    PiRpc->>PiCLI: stdin: { method:'session/prompt', params:{ prompt, images:[{type:'image',data:base64,...}] } }
+
+    rect rgb(255, 245, 220)
+        Note over PiCLI,PiRpc: Streaming events from Pi
+        PiCLI->>PiRpc: stdout: { type:'agent_start' }
+        PiRpc->>Daemon: AgentEvent status:streaming
+        Daemon->>Browser: SSE: agent(status:streaming)
+
+        PiCLI->>PiRpc: stdout: { type:'message_update', text:'...' }
+        PiRpc->>Daemon: AgentEvent text_delta
+        Daemon->>Browser: SSE: agent(text_delta)
+
+        PiCLI->>PiRpc: stdout: { type:'tool_execution_start', name:'...' }
+        PiRpc->>Daemon: AgentEvent tool_use
+        Daemon->>Browser: SSE: agent(tool_use)
+
+        PiCLI->>PiRpc: stdout: { type:'tool_execution_end', result:{...} }
+        PiRpc->>Daemon: AgentEvent tool_result
+        Daemon->>Browser: SSE: agent(tool_result)
+
+        PiCLI->>PiRpc: stdout: { type:'extension_ui_request', ... }
+        Note over PiRpc: auto-replies to dialog/UI requests (not forwarded to browser)
+        PiRpc->>PiCLI: stdin: { method:'extension_ui_response', ... }
+
+        PiCLI->>PiRpc: stdout: { type:'agent_end', usage:{...} }
+        PiRpc->>Daemon: AgentEvent usage
+        Daemon->>Browser: SSE: agent(usage)
+    end
+
+    Daemon->>Daemon: runs.finish('succeeded')
+    Daemon->>Browser: SSE: event:end
+
+    rect rgb(255, 230, 230)
+        Note over PiRpc,PiCLI: Cancellation & shutdown
+        alt user cancels
+            PiRpc->>PiCLI: stdin: abort signal
+            Note over PiRpc: waits PI_ABORT_GRACE_MS (3s) for clean stop
+            PiRpc->>PiCLI: SIGTERM
+        end
+        alt SIGTERM to daemon
+            Note over Daemon,PiCLI: PI_GRACEFUL_SHUTDOWN_MS (5s) grace period before SIGKILL
+        end
+    end

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Open Design Docs</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="index.html">Open <em>Design</em></a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="01-introduction.html">Introduction</a>
+    <a href="02-architecture.html" class="active">Architecture</a>
+    <a href="03-workflow.html">Workflow</a>
+    <a href="04-skills.html">Skills</a>
+    <a href="05-design-systems.html">Design Systems</a>
+    <a href="06-reference.html">Reference</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="crumb"><a href="index.html">Docs</a> / Architecture</div>
+    <h1>Architecture &amp; <em>Internals</em></h1>
+    <p>System topology, component map, daemon internals, agent adapter pool, prompt stack, preview renderer, and artifact store design rationale.</p>
+  </div>
+</div>
+
+<div class="doc-layout">
+  <aside class="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-title">On this page</div>
+      <a href="#overview">System overview</a>
+      <a href="#topologies">Deployment topologies</a>
+      <a href="#components">Component map</a>
+      <a href="#daemon">The daemon</a>
+      <a href="#adapters">Agent adapters</a>
+      <a href="#prompt-stack">Prompt stack</a>
+      <a href="#discovery-prompt">Discovery prompt</a>
+      <a href="#preview">Preview renderer</a>
+      <a href="#artifact-store">Artifact store</a>
+      <a href="#export">Export pipeline</a>
+      <a href="#data-flow">Data flow</a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-title">Related</div>
+      <a href="04-skills.html">→ Skills protocol</a>
+      <a href="06-reference.html">→ API reference</a>
+    </div>
+  </aside>
+
+  <main>
+
+    <section id="overview">
+      <div class="eyebrow"><span>01</span> Overview</div>
+      <h2>How OD builds an agentic platform</h2>
+      <p>Open Design's most important architectural decision: <strong>don't build a new AI agent</strong>. Delegate the entire agent loop — model calls, tool use, context management, permission handling — to the user's existing coding agent CLI. OD's job is to detect it, compose a skill-aware prompt, feed it a working directory, and stream its output to a sandboxed preview.</p>
+
+      <div class="callout callout-blue">
+        <strong>Architecture in one line:</strong> Browser ↔ Daemon (:7456) ↔ Agent CLI + Filesystem. All state that matters is files.
+      </div>
+
+      <pre><span class="c">── System overview ─────────────────────────────────────────</span>
+
+  Browser (Next.js 16)
+    ↕ SSE / WebSocket
+  od daemon (Node.js, port :7456)
+    ├── Session manager     (1 per browser tab)
+    ├── Skill registry      (scans 3 locations, hot-reloads)
+    ├── Design-sys resolver (loads DESIGN.md, injects into prompt)
+    ├── Agent adapter pool  (one adapter per detected CLI)
+    ├── Artifact store      (plain files → ./.od/)
+    └── Export pipeline     (HTML / PDF / PPTX / ZIP)
+    ↕ spawn + stdout
+  Agent CLI (claude / codex / gemini / cursor-agent / …)
+    ↕ file system
+  ./.od/artifacts/&lt;slug&gt;/ (real on-disk project folder)</pre>
+    </section>
+
+    <section id="topologies">
+      <div class="eyebrow"><span>02</span> Deployment</div>
+      <h2>Three deployment topologies</h2>
+      <p>The same web bundle runs in three shapes depending on which transports are enabled:</p>
+
+      <div class="arch-layer l1">
+        <div class="arch-label">Topology A<div class="badge">Default</div></div>
+        <div class="arch-detail"><strong>Fully local.</strong> Browser → Next.js (:3000) → od daemon (:7456) → spawns agent CLIs. One <code>pnpm tools-dev run web</code> starts everything. Zero config, no accounts. All secrets stay on your machine.</div>
+      </div>
+      <div class="arch-layer l2">
+        <div class="arch-label">Topology B<div class="badge">Advanced</div></div>
+        <div class="arch-detail"><strong>Web on Vercel + daemon tunneled.</strong> Run <code>od daemon --expose</code>, which prints a cloudflared tunnel URL. Paste into the deployed app's "Connect daemon" screen. Daemon holds all secrets. Vercel holds nothing sensitive.</div>
+      </div>
+      <div class="arch-layer l3">
+        <div class="arch-label">Topology C<div class="badge">Limited</div></div>
+        <div class="arch-detail"><strong>Vercel + direct API (no daemon).</strong> Browser → Vercel serverless → Anthropic Messages API. BYOK stored in localStorage (with explicit warning). No local CLI, no filesystem artifacts (IndexedDB only), no PPTX export. The "just try it" path.</div>
+      </div>
+    </section>
+
+    <section id="components">
+      <div class="eyebrow"><span>03</span> Components</div>
+      <h2>Logical component map</h2>
+
+      <h3>Web App — 4 panes</h3>
+      <div class="grid2">
+        <div class="card"><h4>💬 Chat pane</h4><p>Free-text prompt input. Shows streaming tool-call feed and agent text output as it arrives via SSE. First pane to appear — time to first byte is the discovery form.</p></div>
+        <div class="card"><h4>🌳 Artifact tree</h4><p>Live file-system view of the artifact directory. Updates in real time as the agent writes files. Every file is clickable — opens in an editor pane.</p></div>
+        <div class="card"><h4>🖼️ Preview iframe</h4><p>Sandboxed <code>&lt;iframe sandbox="allow-scripts"&gt;</code>. Never <code>allow-same-origin</code>. Hot-reloads as files write. Loads <code>index.html</code> when the agent signals completion.</p></div>
+        <div class="card"><h4>💡 Comment/slider overlay</h4><p>Activates after preview loads. Click captures <code>[data-od-id]</code> from the iframe DOM → surgical edit instruction back to the agent. Sliders re-send parameterized prompts.</p></div>
+      </div>
+
+      <h3>Daemon — 7 subsystems</h3>
+      <table>
+        <thead><tr><th>Subsystem</th><th>Location</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td><strong>API server</strong></td><td><code>:7456 /api/*</code></td><td>REST + SSE routes for all web app communication</td></tr>
+          <tr><td><strong>Session manager</strong></td><td>in-memory</td><td>Per-tab sessions: active agent, skill, artifact, design system, in-flight tool calls</td></tr>
+          <tr><td><strong>Agent adapter pool</strong></td><td>—</td><td>One adapter per detected CLI; reused across sessions; spawn + stream + capabilities</td></tr>
+          <tr><td><strong>Skill registry</strong></td><td>3 dirs</td><td>Scans/merges skill dirs by priority; hot-reloads on FS-watch; conflict resolution</td></tr>
+          <tr><td><strong>Design-system resolver</strong></td><td><code>DESIGN.md</code></td><td>Parses 9-section doc; injects into every agent run; hot-reloads on change</td></tr>
+          <tr><td><strong>Artifact store</strong></td><td><code>./.od/</code></td><td>Plain files on disk — never in memory; git-friendly; sessions separate from artifacts</td></tr>
+          <tr><td><strong>Export pipeline</strong></td><td>—</td><td>HTML inline, PDF via Puppeteer, PPTX via pptxgenjs, ZIP via archiver, Markdown direct</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-blue">
+        <strong>Why Next.js instead of a Vite SPA?</strong> SSR for the marketing landing page + serverless routes for Topology C's direct-API path + Vercel as a first-class deployment target. A plain SPA would need a separate server for all three.
+      </div>
+    </section>
+
+    <section id="daemon">
+      <div class="eyebrow"><span>04</span> Daemon</div>
+      <h2>The daemon — heart of the backend</h2>
+      <p>The daemon is a long-running Node.js/Express process distributed as a single binary (via <code>pkg</code>) or a thin npm script. It listens on <code>http://localhost:7456</code> and is the only process that touches the filesystem, spawns agents, and holds session state.</p>
+
+      <h3>Session lifecycle</h3>
+      <div class="flow">
+        <div class="flow-step"><div class="flow-num">1</div><div class="flow-body"><h4>Session created</h4><p>Browser opens a new tab → daemon creates a session object holding active agent handle, skill reference, design-system body (cached), last artifact ID, and in-flight tool-call state.</p></div></div>
+        <div class="flow-step"><div class="flow-num">2</div><div class="flow-body"><h4>Prompt assembly</h4><p>BASE_SYSTEM_PROMPT + DESIGN.md body + SKILL.md body composed in order. Cached per session after first fetch — zero latency on subsequent sends with the same skill/system combo.</p></div></div>
+        <div class="flow-step"><div class="flow-num">3</div><div class="flow-body"><h4>Agent invocation</h4><p>Adapter spawns the CLI with CWD = new artifact directory. The agent has a real filesystem to write into. stdout is parsed as JSON Lines (if supported) or line-by-line.</p></div></div>
+        <div class="flow-step"><div class="flow-num">4</div><div class="flow-body"><h4>Stream routing</h4><p>Agent events classified as <code>tool_call</code>, <code>text_delta</code>, or <code>thinking</code>. Streamed back to the browser via SSE. Artifact tree updates live as files materialize.</p></div></div>
+        <div class="flow-step"><div class="flow-num">5</div><div class="flow-body"><h4>Completion + persistence</h4><p>Agent signals done. Daemon appends to <code>history.jsonl</code>: <code>{ ts, sessionId, artifactId, action, skill, promptHash }</code>. Preview iframe loads the primary output file.</p></div></div>
+        <div class="flow-step"><div class="flow-num gray">GC</div><div class="flow-body"><h4>Session garbage-collected (24h)</h4><p>Sessions are ephemeral. Artifacts under <code>./.od/artifacts/</code> are never deleted automatically — they persist forever until the user removes them.</p></div></div>
+      </div>
+    </section>
+
+    <section id="adapters">
+      <div class="eyebrow"><span>05</span> Agent adapters</div>
+      <h2>The agent adapter pool</h2>
+      <p>Each adapter implements a 4-step interface: <strong>detect → spawn → stream → report capabilities</strong>. OD maintains one adapter instance per detected CLI and reuses it across sessions.</p>
+
+      <h3>Adapter interface</h3>
+      <pre><span class="c">// Simplified TypeScript interface</span>
+<span class="k">interface</span> AgentAdapter {
+  detect(): <span class="k">Promise</span>&lt;boolean&gt;;          <span class="c">// PATH lookup + config-dir probe</span>
+  spawn(opts: {
+    systemPrompt: string;
+    userPrompt: string;
+    cwd: string;                         <span class="c">// artifact directory</span>
+  }): <span class="k">AsyncIterable</span>&lt;AgentEvent&gt;;
+  capabilities: {
+    multiTurn: boolean;
+    surgicalEdit: boolean;               <span class="c">// required for comment mode</span>
+    nativeSkills: boolean;               <span class="c">// reads SKILL.md natively</span>
+    toolUse: <span class="s">'full'</span> | <span class="s">'minimal'</span> | <span class="s">'none'</span>;
+  };
+}</pre>
+
+      <h3>Capabilities matrix</h3>
+      <table>
+        <thead><tr><th>Agent</th><th>Multi-turn</th><th>Surgical edit</th><th>Native skills</th><th>Tool use</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Claude Code</strong></td><td>✅</td><td>✅ Native</td><td>✅</td><td>Full</td><td><span class="badge badge-g">MVP</span></td></tr>
+          <tr><td><strong>API Fallback</strong></td><td>✅</td><td>⚠️ Constrained</td><td>via prompt</td><td>Read/Write/Edit</td><td><span class="badge badge-g">MVP</span></td></tr>
+          <tr><td><strong>Codex</strong></td><td>✅</td><td>⚠️ Constrained</td><td>Partial</td><td>Full</td><td><span class="badge badge-b">Phase 2</span></td></tr>
+          <tr><td><strong>Cursor Agent</strong></td><td>✅</td><td>⚠️ Constrained</td><td>Partial</td><td>Full</td><td><span class="badge badge-b">Phase 2</span></td></tr>
+          <tr><td><strong>Gemini CLI</strong></td><td>✅</td><td>⚠️ Constrained</td><td>via prompt</td><td>Full</td><td><span class="badge badge-b">Phase 2</span></td></tr>
+          <tr><td><strong>OpenCode</strong></td><td>✅</td><td>⚠️ Constrained</td><td>Partial</td><td>Full</td><td><span class="badge badge-p">v1</span></td></tr>
+          <tr><td><strong>Qwen</strong></td><td>✅</td><td>⚠️ Constrained</td><td>via prompt</td><td>Full</td><td><span class="badge badge-p">v1</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-orange">
+        <strong>System prompt delivery:</strong> Local CLIs have no separate system channel. The composed prompt (BASE + DESIGN.md + SKILL.md) is folded into the user message. For the Anthropic API fallback, a proper <code>system</code> parameter is used. Both modes feed the same <code>&lt;artifact&gt;</code> parser and the same sandboxed iframe.
+      </div>
+    </section>
+
+    <section id="prompt-stack">
+      <div class="eyebrow"><span>06</span> Prompt engine</div>
+      <h2>The 3-layer prompt stack</h2>
+      <p>Every generation composes a system prompt from three layers in order. The agent sees them as a single concatenated string (for CLI agents) or a structured system parameter (for API mode).</p>
+
+      <div class="prompt-stack">
+        <div class="pl-row pl-base">
+          <div class="pl-tag">Layer 1<br>Base system</div>
+          <div class="pl-content">
+            <strong>Output contract + designer persona.</strong><br>
+            "You are an expert designer working with the user as your manager. You produce design artifacts in HTML. <strong>HTML is your tool, not your medium</strong>: when making slides be a slide designer, when making an app prototype be an interaction designer."<br><br>
+            Key constraints: wrap every deliverable in <code>&lt;artifact&gt;</code>, no markdown code fences, emit a discovery form on turn 1 before doing anything else.
+          </div>
+        </div>
+        <div class="pl-row pl-system">
+          <div class="pl-tag">Layer 2<br>DESIGN.md</div>
+          <div class="pl-content">
+            <strong>Visual identity injection.</strong><br>
+            The full 9-section brand doc: palette (OKLch values), font stack, spacing scale, component patterns, motion easing, voice. Injected as a prefix before every run.<br><br>
+            Skills can declare <code>od.design_system.sections: [color, typography]</code> to prune to only the relevant sections — saves tokens, reduces noise.
+          </div>
+        </div>
+        <div class="pl-row pl-skill">
+          <div class="pl-tag">Layer 3<br>SKILL.md</div>
+          <div class="pl-content">
+            <strong>Workflow rules + output spec.</strong><br>
+            The skill's Markdown body: what steps to follow, what reference files to read first (pre-flight enforced), what quality checklist to run, what the primary output file should be named, and any OD extension declarations.<br><br>
+            Swapping the skill in the top bar → next send uses the new skill body. Cached in-memory per session after first fetch.
+          </div>
+        </div>
+      </div>
+
+      <h3>Prompt composition code</h3>
+      <pre><span class="c">// Pseudo-code: daemon prompt assembly</span>
+<span class="k">function</span> composePrompt(session: Session): string {
+  <span class="k">return</span> [
+    BASE_SYSTEM_PROMPT,
+    session.designSystem.body,   <span class="c">// DESIGN.md — cached after first load</span>
+    session.skill.body,          <span class="c">// SKILL.md — cached after first load</span>
+  ].join(<span class="s">'\n\n---\n\n'</span>);
+}
+
+<span class="c">// For CLI agents: fold system into user message</span>
+<span class="k">const</span> userMsg = <span class="s">`[System context]\n${composePrompt(session)}\n\n[Task]\n${userPrompt}`</span>;
+
+<span class="c">// For API fallback: use proper system parameter</span>
+<span class="k">const</span> apiReq = { system: composePrompt(session), messages: [{ role: <span class="s">'user'</span>, content: userPrompt }] };</pre>
+    </section>
+
+    <section id="discovery-prompt">
+      <div class="eyebrow"><span>07</span> Discovery prompt</div>
+      <h2>The discovery prompt — turn 1 is sacred</h2>
+      <p>The <code>src/prompts/discovery.ts</code> file is the most important code in the system. It stacks <em>before</em> the official OD designer prompt, so its 3 hard rules beat everything else.</p>
+
+      <div class="turn-block t1">
+        <div class="turn-label">Rule 1 — Turn 1: emit discovery form, nothing else</div>
+        <p>First output is one short prose line + a <code>&lt;question-form id="discovery"&gt;</code> block. No file reads, no Bash, no TodoWrite, no extended thinking. This is the "time to first byte" — the form appears in under a second. Questions: output type, platform surface, audience, visual tone (up to 2), brand context.</p>
+      </div>
+
+      <div class="turn-block t2">
+        <div class="turn-label">Rule 2 — Turn 2: branch on brand answer</div>
+        <p>If user says "pick a direction for me" → emit <code>&lt;question-form id="direction"&gt;</code> with 5 curated visual directions (each with a specific OKLch palette, font pairing, layout posture cue). If user provides brand spec/URL → extract brand tokens via Bash+Read, then TodoWrite. Otherwise → TodoWrite directly.</p>
+      </div>
+
+      <div class="turn-block t3">
+        <div class="turn-label">Rule 3 — Turn 3+: work the plan</div>
+        <p>TodoWrite plan streams live. Agent must read all skill reference files first (pre-flight enforced by SKILL.md). Builds artifact on disk. Runs 5-dimensional self-critique gate (Philosophy · Hierarchy · Execution · Specificity · Restraint). Emits <code>&lt;artifact&gt;</code>. Preview loads.</p>
+      </div>
+
+      <h3>The 5-dimensional critique gate</h3>
+      <table>
+        <thead><tr><th>Dimension</th><th>Question asked</th><th>Anti-pattern caught</th></tr></thead>
+        <tbody>
+          <tr><td>Philosophy</td><td>Does this have a coherent aesthetic point of view?</td><td>Generic "AI-looking" output with no identity</td></tr>
+          <tr><td>Hierarchy</td><td>Is information structured for clarity and guided reading?</td><td>Everything the same visual weight</td></tr>
+          <tr><td>Execution</td><td>Are technical decisions correct? Code clean?</td><td>Broken CSS, misused components</td></tr>
+          <tr><td>Specificity</td><td>Is it specific to this brief, or generic?</td><td>Lorem ipsum, placeholder copy, generic hero images</td></tr>
+          <tr><td>Restraint</td><td>Does it avoid over-design and clutter?</td><td>Too many colors, excessive animation, noisy layout</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="preview">
+      <div class="eyebrow"><span>08</span> Preview</div>
+      <h2>Sandboxed preview renderer</h2>
+      <p>The preview iframe is always <code>&lt;iframe sandbox="allow-scripts"&gt;</code> — never <code>allow-same-origin</code>. Artifact code has zero access to <code>window</code>, cookies, or parent DOM.</p>
+
+      <table>
+        <thead><tr><th>Artifact type</th><th>Render strategy</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Static HTML</strong></td><td><code>srcdoc</code> load with all CSS inlined. No external requests. Works offline.</td></tr>
+          <tr><td><strong>JSX</strong></td><td>Bootstrap injects vendored React 18 + Babel standalone, then dynamically evals the JSX. Follows Open CoDesign's approach.</td></tr>
+          <tr><td><strong>Markdown</strong></td><td>Rendered via lightweight Markdown parser, styled with active design system typography tokens.</td></tr>
+          <tr><td><strong>PPTX preview</strong></td><td>Rendered as a horizontal-swipe HTML deck derived from <code>slides.json</code> — not the actual .pptx binary.</td></tr>
+        </tbody>
+      </table>
+
+      <p>The preview hot-reloads as the agent streams file writes, debounced at 100ms. The slider UI (when skills declare <code>od.parameters</code>) re-sends parameterized prompts without round-tripping the full chat context — extremely fast for small aesthetic adjustments.</p>
+    </section>
+
+    <section id="artifact-store">
+      <div class="eyebrow"><span>09</span> Artifact store</div>
+      <h2>The artifact store — plain files by design</h2>
+
+      <pre><span class="c"># Every generation creates this structure:</span>
+./.od/
+├── config.json                         <span class="c"># project-level daemon config</span>
+├── artifacts/
+│   ├── 2026-04-24T10-03-12-landing/
+│   │   ├── artifact.json               <span class="c"># skill, promptHash, parent, mode</span>
+│   │   ├── index.html                  <span class="c"># primary output</span>
+│   │   └── assets/                     <span class="c"># skill-generated images, fonts</span>
+│   └── 2026-04-24T11-22-05-dashboard/
+│       └── ...
+├── history.jsonl                       <span class="c"># append-only action log</span>
+└── sessions/
+    └── &lt;session-id&gt;.json              <span class="c"># ephemeral, GC'd after 24h</span></pre>
+
+      <h3>Design rationale</h3>
+      <div class="grid2">
+        <div class="card"><h4>Plain files → git-friendly</h4><p><code>git add ./.od/artifacts/</code> and review design history in pull requests. No database dump, no binary blob, no vendor tooling required.</p></div>
+        <div class="card"><h4>artifact.json → reconstructable</h4><p>OD can rebuild the full artifact tree from metadata alone — no database needed. Records the exact skill, design system, and prompt hash used.</p></div>
+        <div class="card"><h4>history.jsonl not SQLite</h4><p>Append-only, greppable, diff-friendly. A deliberate choice against Open CoDesign's SQLite approach — filesystem is the database.</p></div>
+        <div class="card"><h4>Sessions separate from artifacts</h4><p>Sessions are ephemeral UI state (24h GC). Artifacts are durable permanent records — never auto-deleted.</p></div>
+      </div>
+    </section>
+
+    <section id="export">
+      <div class="eyebrow"><span>10</span> Export pipeline</div>
+      <h2>Export pipeline</h2>
+      <table>
+        <thead><tr><th>Format</th><th>Library</th><th>Source</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><strong>HTML</strong></td><td>Custom inliner</td><td>index.html</td><td>All CSS inlined, assets as data: URIs. Fully offline, single file.</td></tr>
+          <tr><td><strong>PDF</strong></td><td>Puppeteer</td><td>Rendered HTML</td><td><code>page.pdf()</code>. Full CSS + web font support. Phase 2.</td></tr>
+          <tr><td><strong>PPTX</strong></td><td>pptxgenjs</td><td>slides.json</td><td>Deck skills emit slides.json intermediate. Phase 2.</td></tr>
+          <tr><td><strong>ZIP</strong></td><td>archiver</td><td>Full artifact dir</td><td>Complete project folder including all assets.</td></tr>
+          <tr><td><strong>Markdown</strong></td><td>Direct copy</td><td>artifact.md</td><td>For editorial/documentation skills. Direct if .md, else skill-defined render.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="data-flow">
+      <div class="eyebrow"><span>11</span> Data flow</div>
+      <h2>Complete request lifecycle</h2>
+      <div class="flow">
+        <div class="flow-step"><div class="flow-num">1</div><div class="flow-body"><h4>User sends prompt</h4><p>Web sends <code>{ method: "session.generate", sessionId, prompt, modeHint }</code> via WebSocket.</p></div></div>
+        <div class="flow-step"><div class="flow-num">2</div><div class="flow-body"><h4>Daemon assembles prompt</h4><p>Picks active skill + loads DESIGN.md. Materializes new artifact dir <code>./.od/artifacts/&lt;slug&gt;/</code>. Composes 3-layer system prompt.</p></div></div>
+        <div class="flow-step"><div class="flow-num">3</div><div class="flow-body"><h4>Agent adapter invoked</h4><p>Spawns CLI with system prompt, user prompt, and CWD = artifact directory. Agent has real filesystem access.</p></div></div>
+        <div class="flow-step"><div class="flow-num">4</div><div class="flow-body"><h4>Events stream to browser</h4><p><code>tool_call</code> events (file writes), <code>text_delta</code> (agent thoughts), <code>thinking</code> blocks stream to chat pane and artifact tree in real time.</p></div></div>
+        <div class="flow-step"><div class="flow-num">5</div><div class="flow-body"><h4>Preview loads</h4><p>Agent signals done. Primary output file loads in sandboxed iframe. Comment + slider overlay activates.</p></div></div>
+        <div class="flow-step"><div class="flow-num">6</div><div class="flow-body"><h4>History appended</h4><p><code>{ ts, sessionId, artifactId, action: "generate", skill, promptHash }</code> appended to history.jsonl.</p></div></div>
+        <div class="flow-step"><div class="flow-num gray">+</div><div class="flow-body"><h4>Comment → surgical edit</h4><p>User clicks element → popover note → web sends <code>{ artifactId, elementId, note }</code>. Daemon re-invokes agent with targeted edit instruction. Only that element is modified.</p></div></div>
+      </div>
+    </section>
+
+    <div class="next-page">
+      <a href="03-workflow.html" class="next-link">
+        <span class="next-label">Next: Working Workflow →</span>
+        <span class="next-sub">Setup, the 4-stage loop, turn-by-turn choreography, export</span>
+      </a>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <div class="footer-brand">Open <em>Design</em></div>
+  <div>Apache-2.0 · <a href="https://github.com/nexu-io/open-design">github.com/nexu-io/open-design</a></div>
+</footer>
+</body>
+</html>

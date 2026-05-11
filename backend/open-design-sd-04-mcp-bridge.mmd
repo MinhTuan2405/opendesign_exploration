@@ -1,0 +1,52 @@
+sequenceDiagram
+    autonumber
+    participant ExtAgent as External Agent (Claude Code)
+    participant MCPServer as od mcp server
+    participant Daemon as OD Daemon (HTTP)
+    participant SQLite
+    participant FileSystem
+
+    Note over ExtAgent,MCPServer: Developer runs: claude --mcp-server od:npx od mcp
+
+    ExtAgent->>MCPServer: MCP tools/list
+    MCPServer-->>ExtAgent: tool schemas (list_projects, get_active_context, get_artifact,<br/>get_project, get_file, search_files, list_files, + 3 resources)
+
+    rect rgb(230, 240, 255)
+        Note over ExtAgent,MCPServer: Project discovery
+        ExtAgent->>MCPServer: tools/call list_projects {}
+        MCPServer->>Daemon: GET /api/projects
+        Daemon->>SQLite: SELECT * FROM projects
+        SQLite-->>Daemon: project rows
+        Daemon-->>MCPServer: project list JSON
+        MCPServer-->>ExtAgent: [{ id, name, skillId, designSystemId, ... }]
+    end
+
+    rect rgb(230, 255, 230)
+        Note over ExtAgent,MCPServer: Active context lookup (5-min TTL)
+        ExtAgent->>MCPServer: tools/call get_active_context {}
+        MCPServer->>Daemon: GET /api/active
+        Daemon-->>MCPServer: { projectId, filePath } (current user focus in OD UI)
+        MCPServer-->>ExtAgent: active context
+    end
+
+    rect rgb(255, 245, 220)
+        Note over ExtAgent,MCPServer: Artifact retrieval with BFS traversal
+        ExtAgent->>MCPServer: tools/call get_artifact { projectId, filePath }
+        MCPServer->>Daemon: GET /api/projects/:id/files/:path
+        Daemon->>FileSystem: read artifact file
+        FileSystem-->>Daemon: HTML content
+        Note over MCPServer: BFS traversal: finds script/link/img/@import references<br/>recursively fetches up to soft cap 1.5MB total
+        Daemon-->>MCPServer: artifact HTML + referenced assets
+        MCPServer-->>ExtAgent: artifact bundle (design tokens, component patterns)
+    end
+
+    rect rgb(240, 230, 255)
+        Note over ExtAgent,MCPServer: File search
+        ExtAgent->>MCPServer: tools/call search_files { projectId, query:'button' }
+        MCPServer->>Daemon: GET /api/projects/:id/search?q=button
+        Note over Daemon: literal substring, case-insensitive, max 200 matches
+        Daemon-->>MCPServer: [{ file, line, snippet }]
+        MCPServer-->>ExtAgent: search results
+    end
+
+    Note over ExtAgent: Can now reference OD design tokens and component patterns in generation

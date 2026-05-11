@@ -1,0 +1,50 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant Browser as Browser (WebUI)
+    participant Daemon
+    participant SkillRegistry
+    participant DSRegistry as DesignSystem Registry
+    participant CraftLoader
+    participant PromptComposer
+
+    rect rgb(230, 240, 255)
+        Note over Browser,SkillRegistry: Skill enumeration
+        Browser->>Daemon: GET /api/skills
+        Daemon->>SkillRegistry: listSkills(SKILLS_DIR)
+        SkillRegistry->>SkillRegistry: scans skills/<folder>/SKILL.md, parses frontmatter
+        SkillRegistry-->>Daemon: [{ id, name, mode, scenario, platform, featured, previewType, ... }]
+        Daemon-->>Browser: skills array
+        Browser->>Browser: renders skill picker (grouped by scenario)
+    end
+
+    rect rgb(230, 255, 230)
+        Note over Browser,DSRegistry: Design system enumeration
+        Browser->>Daemon: GET /api/design-systems
+        Daemon->>DSRegistry: listDesignSystems(DS_DIR)
+        DSRegistry->>DSRegistry: scans design-systems/<folder>/DESIGN.md<br/>extracts title / category / swatches
+        DSRegistry-->>Daemon: [{ id, title, category, swatches, ... }]
+        Daemon-->>Browser: design systems array
+        Browser->>Browser: renders DS picker with color swatches
+    end
+
+    User->>Browser: selects skill
+    Browser->>Daemon: PATCH /api/projects/:id { skillId }
+    User->>Browser: selects design system
+    Browser->>Daemon: PATCH /api/projects/:id { designSystemId }
+
+    rect rgb(255, 245, 220)
+        Note over Daemon,PromptComposer: Prompt assembly on next generation turn
+        Daemon->>DSRegistry: readDesignSystem(dsId)
+        DSRegistry-->>Daemon: full DESIGN.md body
+        Daemon->>CraftLoader: loadCraftSections(skill.craftRequires)
+        CraftLoader->>CraftLoader: resolves craft/<section>.md files from craft/ dir
+        CraftLoader-->>Daemon: concatenated craft body
+
+        Daemon->>PromptComposer: composeSystemPrompt(skill, ds, craft, metadata, opts)
+        Note over PromptComposer: Layer 1: DISCOVERY_AND_PHILOSOPHY (always)<br/>Layer 2: OFFICIAL_DESIGNER_PROMPT (always)<br/>Layer 3: Active DESIGN.md body (always)<br/>Layer 4: derivePreflight() preamble + SKILL.md body (always)<br/>Layer 5: metadata block (if metadata present)<br/>Layer 6: deck framework directive (if mode:deck)<br/>Layer 7: media generation contract (if media enabled)<br/>Layer 8: Codex imagegen override (if Codex agent)<br/>Layer 9: critique theater addendum (if critique enabled)
+        PromptComposer-->>Daemon: composed system prompt string
+
+        Daemon->>Daemon: buildArgs() → argv array
+        Note over Daemon: prompt via -p flag (Claude Code, Copilot)<br/>or stdin pipe (Codex/Gemini/OpenCode/Qwen/Qoder/Pi)
+    end

@@ -1,0 +1,62 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant Browser as Browser (WebUI)
+    participant Daemon
+    participant LiveStore as LiveArtifactStore
+    participant ConnectorSvc as ConnectorService
+    participant FileSystem
+    participant AgentCLI as Agent CLI (mini-turn)
+
+    User->>Browser: views live artifact dashboard
+    Browser->>Daemon: GET /api/projects/:id/live-artifacts
+    Daemon->>LiveStore: list live artifacts for project
+    LiveStore-->>Daemon: [{ id, name, templatePath, lastRefreshed, refreshStatus, ... }]
+    Daemon-->>Browser: live artifacts array
+
+    User->>Browser: clicks "Refresh" on artifact
+    Browser->>Daemon: POST /api/projects/:id/live-artifacts/:artifactId/refresh
+
+    Daemon->>LiveStore: updateRefreshStatus(artifactId, 'running')
+    Daemon->>Browser: SSE: { type:'live_artifact_refresh', phase:'started', artifactId }
+
+    rect rgb(230, 240, 255)
+        Note over Daemon,FileSystem: Template & data loading
+        Daemon->>FileSystem: read template.html from .od/projects/<id>/.live-artifacts/<artifactId>/
+        FileSystem-->>Daemon: template HTML
+    end
+
+    rect rgb(230, 255, 230)
+        Note over Daemon,ConnectorSvc: Fresh data fetch
+        Note over ConnectorSvc: [Uncertain] connector tool, Composio, or daemon tool
+        Daemon->>ConnectorSvc: fetchData(artifact.connectorConfig)
+        ConnectorSvc-->>Daemon: raw data payload
+
+        Daemon->>Daemon: resolves output mapping
+        Note over Daemon: identity | compact_table | metric_summary
+    end
+
+    rect rgb(255, 245, 220)
+        Note over Daemon: Data validation
+        Daemon->>Daemon: validate against BoundedJsonConstraints
+        Note over Daemon: max 256KB, depth 8, key count limits, no circular refs
+        Daemon->>FileSystem: write updated data.json to .live-artifacts/<artifactId>/
+    end
+
+    alt refresh requires agent re-render
+        rect rgb(240, 230, 255)
+            Note over Daemon,AgentCLI: Mini agent turn
+            Daemon->>AgentCLI: spawn mini-turn with template + fresh data context
+            AgentCLI->>AgentCLI: reads template.html + data.json
+            AgentCLI->>AgentCLI: writes updated index.html
+            AgentCLI->>Daemon: emits artifact tag in output stream
+            AgentCLI->>Daemon: process exit
+        end
+    else data-only update (no agent needed)
+        Daemon->>Daemon: merge data into template bindings directly
+        Daemon->>FileSystem: write index.html
+    end
+
+    Daemon->>LiveStore: updateRefreshStatus(artifactId, 'succeeded')
+    Daemon->>Browser: SSE: { type:'live_artifact_refresh', phase:'completed', artifactId }
+    Browser->>Browser: updates preview iframe srcdoc with refreshed artifact

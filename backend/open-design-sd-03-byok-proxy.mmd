@@ -1,0 +1,50 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant Browser as Browser (WebUI)
+    participant Daemon
+    participant SkillLoader
+    participant ByokProxy as BYOK Proxy Handler
+    participant AnthropicAPI as Anthropic API
+    participant ArtifactParser
+
+    Note over Daemon: detectAgents() on startup found no CLIs — BYOK mode active
+
+    User->>Browser: Submit message
+    Browser->>Daemon: POST /api/proxy/anthropic/stream { messages, model, systemPrompt }
+
+    rect rgb(255, 220, 220)
+        Note over Daemon,ByokProxy: Security checks
+        Daemon->>ByokProxy: SSRF check on target host
+        Note over ByokProxy: Blocks 10.x · 172.16-31.x · 192.168.x · 169.254.x
+        Daemon->>Daemon: reads API key from .od/media-config.json
+    end
+
+    rect rgb(230, 240, 255)
+        Note over Daemon,SkillLoader: Skill injection into system prompt
+        Daemon->>SkillLoader: findSkillById(skillId)
+        SkillLoader-->>Daemon: SKILL.md body
+        Daemon->>SkillLoader: loadReferences(skillId)
+        SkillLoader-->>Daemon: references/*.md contents
+        Note over Daemon: Inlines skill body + references into systemPrompt<br/>(prompt injection — no native agent file-reading)
+    end
+
+    rect rgb(230, 255, 230)
+        Note over Daemon,AnthropicAPI: Proxied streaming request
+        Daemon->>AnthropicAPI: POST api.anthropic.com/v1/messages stream:true
+        AnthropicAPI-->>Daemon: SSE content_block_start
+        AnthropicAPI-->>Daemon: SSE content_block_delta type:text_delta
+        AnthropicAPI-->>Daemon: SSE message_delta stop_reason
+        AnthropicAPI-->>Daemon: SSE message_stop
+    end
+
+    rect rgb(255, 245, 220)
+        Note over Daemon,ArtifactParser: Normalization and forwarding
+        Daemon->>ByokProxy: normalize Anthropic SSE → OD format delta/end/error
+        ByokProxy->>Browser: SSE normalized delta events
+        ByokProxy->>ArtifactParser: text stream
+        ArtifactParser->>Browser: SSE artifact:start / artifact:chunk / artifact:end
+    end
+
+    Note over Daemon,Browser: [Uncertain] BYOK tool loop — agent cannot call MCP tools directly
+    Browser->>Browser: renders artifact from streamed content

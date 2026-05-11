@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference — Open Design Docs</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="index.html">Open <em>Design</em></a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="01-introduction.html">Introduction</a>
+    <a href="02-architecture.html">Architecture</a>
+    <a href="03-workflow.html">Workflow</a>
+    <a href="04-skills.html">Skills</a>
+    <a href="05-design-systems.html">Design Systems</a>
+    <a href="06-reference.html" class="active">Reference</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="crumb"><a href="index.html">Docs</a> / Reference</div>
+    <h1>Reference &amp; <em>Cheatsheet</em></h1>
+    <p>Daemon API endpoints, CLI commands, config options, performance targets, roadmap, filesystem layout, and the master quick-reference.</p>
+  </div>
+</div>
+
+<div class="doc-layout">
+  <aside class="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-title">On this page</div>
+      <a href="#quickref">Quick reference</a>
+      <a href="#api">Daemon API</a>
+      <a href="#cli">CLI commands</a>
+      <a href="#config">Config options</a>
+      <a href="#filesystem">Filesystem layout</a>
+      <a href="#performance">Performance targets</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#glossary">Glossary</a>
+    </div>
+  </aside>
+
+  <main>
+
+    <section id="quickref">
+      <div class="eyebrow"><span>01</span> Quick reference</div>
+      <h2>Master cheatsheet</h2>
+
+      <h3>Startup commands</h3>
+      <table>
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>npm run dev:all</code></td><td>Start daemon (:7456) + Vite (:5173) — primary dev command</td></tr>
+          <tr><td><code>npm run daemon</code></td><td>Start daemon only</td></tr>
+          <tr><td><code>npm run dev</code></td><td>Start Vite only (API calls fail without daemon)</td></tr>
+          <tr><td><code>npm run build</code></td><td>Production build → <code>dist/</code></td></tr>
+          <tr><td><code>npm run start</code></td><td>Build + serve — single-process prod mode at :7456</td></tr>
+          <tr><td><code>npm run typecheck</code></td><td>TypeScript check, no emit</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Key URLs</h3>
+      <table>
+        <thead><tr><th>URL</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>http://localhost:5173</code></td><td>Web UI (dev mode)</td></tr>
+          <tr><td><code>http://localhost:7456</code></td><td>Daemon API + web UI (prod mode)</td></tr>
+          <tr><td><code>http://localhost:7456/api/agents</code></td><td>List detected agents</td></tr>
+          <tr><td><code>http://localhost:7456/api/skills</code></td><td>List available skills</td></tr>
+          <tr><td><code>http://localhost:7456/api/design-systems</code></td><td>List available design systems</td></tr>
+          <tr><td><code>http://localhost:7456/api/artifacts</code></td><td>List artifacts in current project</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Common file locations</h3>
+      <table>
+        <thead><tr><th>Path</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>./skills/</code></td><td>Project-committed skills (priority 2)</td></tr>
+          <tr><td><code>./.claude/skills/</code></td><td>Project-private skills (priority 1, gitignored)</td></tr>
+          <tr><td><code>~/.claude/skills/</code></td><td>User-global skills (priority 3)</td></tr>
+          <tr><td><code>./DESIGN.md</code></td><td>Project brand design system (overrides all built-ins)</td></tr>
+          <tr><td><code>./.od/artifacts/</code></td><td>All generated artifacts — commit this to git</td></tr>
+          <tr><td><code>./.od/history.jsonl</code></td><td>Append-only action log — all generations and edits</td></tr>
+          <tr><td><code>./.od/config.json</code></td><td>Project-level daemon configuration</td></tr>
+          <tr><td><code>./.od/sessions/</code></td><td>Ephemeral session state — GC'd after 24h</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="api">
+      <div class="eyebrow"><span>02</span> API</div>
+      <h2>Daemon REST + SSE API</h2>
+      <p>The daemon exposes REST endpoints under <code>/api/*</code> on port 7456. The primary real-time communication is over SSE (Server-Sent Events) or WebSocket.</p>
+
+      <h3>REST endpoints</h3>
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>GET</td><td><code>/api/agents</code></td><td>List all detected agent CLIs with capability info</td></tr>
+          <tr><td>GET</td><td><code>/api/skills</code></td><td>List all available skills with frontmatter metadata</td></tr>
+          <tr><td>GET</td><td><code>/api/skills/:name</code></td><td>Get full SKILL.md body for a specific skill</td></tr>
+          <tr><td>GET</td><td><code>/api/design-systems</code></td><td>List all available design systems</td></tr>
+          <tr><td>GET</td><td><code>/api/design-systems/:name</code></td><td>Get full DESIGN.md body for a specific system</td></tr>
+          <tr><td>GET</td><td><code>/api/artifacts</code></td><td>List all artifacts in the current project</td></tr>
+          <tr><td>GET</td><td><code>/api/artifacts/:id</code></td><td>Get artifact metadata and file list</td></tr>
+          <tr><td>POST</td><td><code>/api/artifacts/save</code></td><td>Explicitly persist an artifact to disk (usually auto)</td></tr>
+          <tr><td>POST</td><td><code>/api/upload</code></td><td>Upload an image or file for use in generation</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Session WebSocket messages</h3>
+      <table>
+        <thead><tr><th>Method</th><th>Direction</th><th>Payload</th></tr></thead>
+        <tbody>
+          <tr><td><code>session.generate</code></td><td>Client → Daemon</td><td><code>{ sessionId, prompt, modeHint }</code></td></tr>
+          <tr><td><code>session.refine</code></td><td>Client → Daemon</td><td><code>{ sessionId, artifactId, elementId, note }</code></td></tr>
+          <tr><td><code>session.cancel</code></td><td>Client → Daemon</td><td><code>{ sessionId }</code></td></tr>
+          <tr><td><code>event.tool_call</code></td><td>Daemon → Client</td><td><code>{ type, name, input }</code> — agent tool invocation</td></tr>
+          <tr><td><code>event.text_delta</code></td><td>Daemon → Client</td><td><code>{ text }</code> — streaming agent text</td></tr>
+          <tr><td><code>event.thinking</code></td><td>Daemon → Client</td><td><code>{ thinking }</code> — agent reasoning block (if supported)</td></tr>
+          <tr><td><code>event.artifact</code></td><td>Daemon → Client</td><td><code>{ artifactId, primaryFile, filesWritten }</code> — generation complete</td></tr>
+          <tr><td><code>event.error</code></td><td>Daemon → Client</td><td><code>{ message, recoverable }</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="cli">
+      <div class="eyebrow"><span>03</span> CLI</div>
+      <h2>Daemon CLI commands</h2>
+      <pre><span class="c"># Start daemon in foreground</span>
+od daemon
+
+<span class="c"># Start daemon and expose via cloudflared tunnel (Topology B)</span>
+od daemon --expose
+
+<span class="c"># Trigger skill rescan (production — no FS-watch)</span>
+<span class="k">kill</span> -HUP $(pgrep -f <span class="s">"od daemon"</span>)
+
+<span class="c"># List all detected agents</span>
+od agents
+
+<span class="c"># List all available skills</span>
+od skills
+
+<span class="c"># Test a specific skill (Phase 2)</span>
+od skill test &lt;skill-name&gt; --prompt <span class="s">"test prompt"</span>
+
+<span class="c"># Validate a DESIGN.md</span>
+od design-system validate ./DESIGN.md</pre>
+    </section>
+
+    <section id="config">
+      <div class="eyebrow"><span>04</span> Config</div>
+      <h2>Configuration options</h2>
+      <h3>.od/config.json</h3>
+      <pre>{
+  <span class="s">"daemon"</span>: {
+    <span class="s">"port"</span>: 7456,
+    <span class="s">"artfactsDir"</span>: <span class="s">"./.od/artifacts"</span>,   <span class="c">// override artifact location</span>
+    <span class="s">"skillsDirs"</span>: [<span class="s">"./skills"</span>],          <span class="c">// additional skill dirs to scan</span>
+    <span class="s">"designSystemPath"</span>: <span class="s">"./DESIGN.md"</span>    <span class="c">// override design system location</span>
+  },
+  <span class="s">"agent"</span>: {
+    <span class="s">"preferred"</span>: <span class="s">"claude"</span>,               <span class="c">// force a specific agent instead of auto-detect</span>
+    <span class="s">"timeout"</span>: 120000                    <span class="c">// agent timeout in ms (default 120s)</span>
+  },
+  <span class="s">"defaults"</span>: {
+    <span class="s">"skill"</span>: <span class="s">"web-prototype"</span>,           <span class="c">// default skill on first load</span>
+    <span class="s">"designSystem"</span>: <span class="s">"neutral-modern"</span>    <span class="c">// default system on first load</span>
+  }
+}</pre>
+
+      <h3>Environment variables</h3>
+      <table>
+        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>OD_DAEMON_PORT</code></td><td>7456</td><td>Override daemon port</td></tr>
+          <tr><td><code>OD_ARTIFACTS_DIR</code></td><td>./.od/artifacts</td><td>Override artifact storage location</td></tr>
+          <tr><td><code>ANTHROPIC_API_KEY</code></td><td>—</td><td>Required for Claude Code or API fallback mode</td></tr>
+          <tr><td><code>OPENAI_API_KEY</code></td><td>—</td><td>Required for Codex adapter</td></tr>
+          <tr><td><code>OD_BYOK_BASE_URL</code></td><td>—</td><td>Base URL for BYOK provider (OpenAI-compatible)</td></tr>
+          <tr><td><code>OD_BYOK_API_KEY</code></td><td>—</td><td>API key for BYOK provider</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="filesystem">
+      <div class="eyebrow"><span>05</span> Filesystem</div>
+      <h2>Complete filesystem layout</h2>
+      <pre>open-design/
+├── daemon/                    <span class="c"># Node/Express daemon</span>
+│   ├── server.js              <span class="c"># API routes: /api/agents /api/skills /api/chat /api/artifacts</span>
+│   ├── agents.js              <span class="c"># PATH scanner for all 12 agent CLIs</span>
+│   ├── skills.js              <span class="c"># SKILL.md loader with frontmatter parser</span>
+│   ├── design-systems.js      <span class="c"># DESIGN.md loader and resolver</span>
+│   └── frontmatter.js         <span class="c"># Minimal YAML parser (no dependencies)</span>
+│
+├── skills/                    <span class="c"># 31 built-in SKILL.md bundles</span>
+│   ├── web-prototype/         <span class="c"># Default prototype skill</span>
+│   ├── saas-landing/
+│   ├── dashboard/
+│   ├── pricing-page/
+│   ├── docs-page/
+│   ├── blog-post/
+│   ├── mobile-app/
+│   ├── simple-deck/
+│   └── guizang-ppt/           <span class="c"># Default deck skill — has assets/ + references/</span>
+│       ├── SKILL.md
+│       ├── assets/template.html
+│       └── references/{themes,layouts,components,checklist}.md
+│
+├── design-systems/            <span class="c"># 72 DESIGN.md files</span>
+│   ├── neutral-modern.md
+│   ├── warm-editorial.md
+│   └── ...                    <span class="c"># 70 more</span>
+│
+├── src/                       <span class="c"># Next.js / Vite frontend</span>
+│   └── prompts/
+│       ├── discovery.ts       <span class="c"># The discovery + philosophy directives (critical)</span>
+│       └── directions.ts      <span class="c"># 5 curated visual direction definitions</span>
+│
+├── docs/                      <span class="c"># Architecture documentation</span>
+│   ├── architecture.md
+│   ├── skills-protocol.md
+│   ├── agent-adapters.md
+│   ├── modes.md
+│   ├── roadmap.md
+│   └── spec.md
+│
+├── assets/frames/             <span class="c"># HyperFrames visual frame assets</span>
+├── templates/                 <span class="c"># Seed templates for artifact project folders</span>
+├── QUICKSTART.md
+└── README.md
+
+<span class="c"># Project output (created when you first run OD in a project)</span>
+./.od/
+├── config.json
+├── artifacts/
+│   └── &lt;timestamp&gt;-&lt;slug&gt;/
+│       ├── artifact.json      <span class="c"># metadata: skill, promptHash, parent, mode</span>
+│       ├── index.html         <span class="c"># primary output</span>
+│       └── assets/
+├── history.jsonl              <span class="c"># append-only action log</span>
+└── sessions/                  <span class="c"># ephemeral, GC'd after 24h</span></pre>
+    </section>
+
+    <section id="performance">
+      <div class="eyebrow"><span>06</span> Performance</div>
+      <h2>Performance targets</h2>
+      <table>
+        <thead><tr><th>Metric</th><th>Target</th><th>How achieved</th></tr></thead>
+        <tbody>
+          <tr><td>Daemon cold start</td><td>&lt; 500ms</td><td>Lazy skill loading, cached design system bodies</td></tr>
+          <tr><td>First generation overhead</td><td>&lt; 50ms above agent latency</td><td>Pre-assembled prompt, pre-created artifact dir</td></tr>
+          <tr><td>Skill hot-reload (dev)</td><td>Near-instant</td><td>chokidar FS-watch, re-parse only changed file</td></tr>
+          <tr><td>Design system swap</td><td>Zero latency</td><td>Bodies cached in-memory per session after first fetch</td></tr>
+          <tr><td>Preview hot-reload</td><td>Debounced at 100ms</td><td>srcdoc update on file write event from daemon</td></tr>
+          <tr><td>Comment mode edit</td><td>Faster than full regen</td><td>Only modified file re-written; rest of artifact untouched</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="roadmap">
+      <div class="eyebrow"><span>07</span> Roadmap</div>
+      <h2>Official roadmap</h2>
+
+      <h3>Phase 0 — Spec finalization <span class="badge badge-g">Complete</span></h3>
+      <p>All interfaces specified before implementation. JSON schemas for frontmatter, DESIGN.md format, HTTP/SSE API, and adapter interface. Working example skill and DESIGN.md written.</p>
+
+      <h3>Phase 1 — MVP <span class="badge badge-b">In progress ~6–8 weeks</span></h3>
+      <ul class="flist">
+        <li>Next.js 16 web app: chat pane, artifact tree, sandboxed preview, export menu</li>
+        <li>Local daemon: HTTP/SSE API, skill registry, artifact store, design-system resolver</li>
+        <li>Agent adapters: Claude Code (native) + API fallback</li>
+        <li>Export: HTML + ZIP only</li>
+        <li>Skills: <code>saas-landing</code> + <code>magazine-web-ppt</code></li>
+        <li>Topologies: A (fully local) + C (Vercel + direct API)</li>
+        <li><em>Explicitly out:</em> Codex/Cursor/Gemini adapters, comment mode, sliders, PDF/PPTX export</li>
+      </ul>
+
+      <h3>Phase 2 — Beta <span class="badge badge-p">~4–6 weeks post-MVP</span></h3>
+      <ul class="flist">
+        <li>Agent adapters: Codex, Cursor Agent, Gemini CLI</li>
+        <li>Comment mode + surgical edits</li>
+        <li>Live parameter sliders</li>
+        <li>PDF + PPTX export pipeline (Puppeteer + pptxgenjs)</li>
+        <li>Template gallery + template skill mode</li>
+        <li>Topology B: Vercel + tunneled local daemon</li>
+        <li>Design System skill: from screenshot / PDF / URL (vision input)</li>
+        <li>Docker compose file for self-hosted teams</li>
+      </ul>
+
+      <h3>Phase 3 — v1 Public</h3>
+      <ul class="flist">
+        <li>Skill testing framework: <code>od skill test</code></li>
+        <li>Multi-user / auth layer for team deployments</li>
+        <li>Remaining adapters: Devin, Hermes, Pi, Kimi, Kiro, Qwen, Copilot</li>
+        <li>Full desktop app shell (Topology A native binary)</li>
+        <li>Skill registry / marketplace</li>
+      </ul>
+
+      <div class="callout callout-blue">
+        <strong>Estimate basis:</strong> All phase estimates assume one focused developer. Multiply by 0.6 for two developers and 0.4 for three.
+      </div>
+    </section>
+
+    <section id="glossary">
+      <div class="eyebrow"><span>08</span> Glossary</div>
+      <h2>Glossary</h2>
+      <table>
+        <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Artifact</strong></td><td>The output of a generation — a folder under <code>./.od/artifacts/</code> containing <code>index.html</code>, <code>artifact.json</code> metadata, and optional assets.</td></tr>
+          <tr><td><strong>Daemon</strong></td><td>The long-running Node.js process that bridges the web UI to agent CLIs. Runs on port 7456. Owns session state, skill registry, artifact store, and export pipeline.</td></tr>
+          <tr><td><strong>Skill</strong></td><td>A directory containing a <code>SKILL.md</code> that defines the workflow and output contract for a specific type of design artifact.</td></tr>
+          <tr><td><strong>Design System</strong></td><td>A <code>DESIGN.md</code> file following the 9-section schema. Defines visual identity: palette (OKLch), fonts, spacing, components, motion, voice.</td></tr>
+          <tr><td><strong>Adapter</strong></td><td>The code layer that wraps a specific coding agent CLI (Claude Code, Codex, etc.). Implements: detect → spawn → stream → report capabilities.</td></tr>
+          <tr><td><strong>Discovery prompt</strong></td><td>The <code>src/prompts/discovery.ts</code> layer that enforces the 3 hard rules: turn 1 is always a question form, turn 2 is direction picker or brand extraction, turn 3+ is generation.</td></tr>
+          <tr><td><strong>BYOK</strong></td><td>Bring Your Own Key — OD supports any OpenAI-compatible provider. Daemon never stores credentials.</td></tr>
+          <tr><td><strong>Surgical edit</strong></td><td>A targeted refinement that modifies only a specific DOM element (identified by <code>[data-od-id]</code>) without regenerating the full artifact.</td></tr>
+          <tr><td><strong>OKLch</strong></td><td>A perceptually uniform color space. OD uses it for all color tokens because equal lightness steps look equal to the human eye, unlike hex values.</td></tr>
+          <tr><td><strong>5-dim critique</strong></td><td>The self-evaluation gate run before every artifact emission: Philosophy · Hierarchy · Execution · Specificity · Restraint. Low scores trigger revision.</td></tr>
+          <tr><td><strong>Session</strong></td><td>Per-tab ephemeral state in the daemon: active agent, skill, artifact, design-system body cache, in-flight tool calls. GC'd after 24h. Separate from artifacts (which are permanent).</td></tr>
+          <tr><td><strong>Token pruning</strong></td><td>The <code>od.design_system.sections</code> frontmatter field that limits DESIGN.md injection to only the sections a skill actually uses — saves tokens, reduces noise.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="next-page" style="margin-top:48px">
+      <a href="index.html" class="next-link">
+        <span class="next-label">← Back to home</span>
+        <span class="next-sub">Complete documentation index and quick start</span>
+      </a>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <div class="footer-brand">Open <em>Design</em></div>
+  <div>Apache-2.0 · v0.3.0 · <a href="https://github.com/nexu-io/open-design">github.com/nexu-io/open-design</a> · Docs compiled May 2026</div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,101 @@
+flowchart TD
+    %% ── AGENT OUTPUT ─────────────────────────────────────────
+    AgentOut(["Agent CLI stdout\n(any of 16 adapters)"])
+
+    %% ── STREAM PARSE LAYER ───────────────────────────────────
+    StreamParse["Stream Parser\nclaude-stream.ts / json-event-stream.ts\nacp.ts / pi-rpc.ts / plain\n\nProduces AgentEvents:\ntext_delta · thinking_delta\ntool_use · tool_result · status · usage"]
+
+    %% ── RUN SERVICE ──────────────────────────────────────────
+    RunEmit["runs.emit(run, event, data)\napps/daemon/src/runs.ts\n\nSSE event bus\nmax 2000 events buffered\nTTL 30 min after terminal"]
+
+    %% ── SSE TRANSPORT ────────────────────────────────────────
+    SSETransport["SSE Transport\nCache-Control: no-cache, no-transform\nKeep-alive pings\ntext/event-stream"]
+
+    %% ── WEB ARTIFACT PARSER ──────────────────────────────────
+    ArtifactDetect{{"&lt;artifact ...&gt;\ndetected\nin text stream?"}}
+    TextDisplay["Text display\nmarkdown rendered\nthinking blocks\ntool call panel"]
+    ArtifactParser["ArtifactParser\napps/web/src/artifacts/parser.ts\n\nState machine:\nscanning → inside_artifact\n\nEmits:\nartifact:start { identifier, type, title }\nartifact:chunk { delta }\nartifact:end { fullContent }"]
+
+    %% ── LINT CHECKER ─────────────────────────────────────────
+    LintArtifact["lintArtifact(rawHtml)\napps/daemon/src/lint-artifact.ts"]
+
+    subgraph P0Rules ["P0 Findings — must fix"]
+        direction LR
+        R1["purple-gradient\ntrust-gradient\nai-default-indigo"]
+        R2["emoji-icon\nleft-accent-card\nsans-display"]
+        R3["invented-metric\nfiller-copy\nscroll-into-view"]
+        R4["slide-theme-missing\nall-caps-no-tracking"]
+    end
+
+    subgraph P1Rules ["P1 Findings — should fix"]
+        direction LR
+        R5["external-image\nraw-hex\naccent-overuse"]
+    end
+
+    P0Found{{"P0\nfindings?"}}
+    LintFeedback["renderFindingsForAgent()\n→ Markdown block\n→ lint-feedback SSE event\n→ agent self-corrects"]
+
+    %% ── MANIFEST SIDECAR ─────────────────────────────────────
+    Manifest["artifact-manifest.ts\n&lt;filename&gt;.artifact.json\n\nkind: html/deck/react-component/...\nrenderer: html/deck-html/react-component/...\nexports: [html, pdf, pptx, zip]\nstatus: streaming → complete"]
+
+    %% ── RENDERER REGISTRY ────────────────────────────────────
+    RendererPick{{"Renderer\nresolution"}}
+    HtmlRender["HtmlRenderer\nrenderer='html'\nkind='html' (not deck)"]
+    DeckRender["DeckHtmlRenderer\nkind='deck'\nor isDeckHint"]
+    ReactRender["ReactComponentRenderer\nkind='react-component'"]
+    MdRender["MarkdownRenderer\nrenderer='markdown'\nstreamPartial supported"]
+    SvgRender["SvgRenderer\nrenderer='svg'\nkind='svg'"]
+
+    %% ── PREVIEW ──────────────────────────────────────────────
+    PreviewIframe["🖼️ Preview Iframe\niframe.srcdoc = fullContent\nstandalone HTML sandbox\nno external network in iframe"]
+
+    %% ── PERSISTENCE ──────────────────────────────────────────
+    SQLiteSave["SQLite\nupsertMessage()\nproduced_files_json\nartifact path stored\napps/daemon/src/db.ts"]
+    FileSystem["File System\n.od/projects/&lt;id&gt;/output.html\nagent wrote during generation"]
+
+    %% ── EXPORT ───────────────────────────────────────────────
+    ExportTrigger(["User clicks Export"])
+    ExportHtml["HTML\n(inline assets)"]
+    ExportPdf["PDF\n[Uncertain]"]
+    ExportPptx["PPTX\n[Uncertain]"]
+    ExportZip["ZIP\narchiver\nvisible files only"]
+    ExportMd["Markdown\ndirect copy"]
+
+    %% ── EDGES ────────────────────────────────────────────────
+    AgentOut --> StreamParse --> RunEmit --> SSETransport
+    SSETransport --> ArtifactDetect
+    ArtifactDetect -->|"no"| TextDisplay
+    ArtifactDetect -->|"yes"| ArtifactParser
+
+    ArtifactParser -->|"fullContent"| LintArtifact
+    LintArtifact --> P0Rules & P1Rules
+    P0Rules --> P0Found
+    P0Found -->|"yes"| LintFeedback --> RunEmit
+    P0Found -->|"no"| Manifest
+
+    Manifest --> RendererPick
+    RendererPick --> HtmlRender & DeckRender & ReactRender & MdRender & SvgRender
+    HtmlRender & DeckRender & ReactRender & MdRender & SvgRender --> PreviewIframe
+
+    ArtifactParser -->|"persists ref"| SQLiteSave
+    AgentOut -->|"agent writes file"| FileSystem
+
+    ExportTrigger --> ExportHtml & ExportPdf & ExportPptx & ExportZip & ExportMd
+
+    %% ── STYLES ────────────────────────────────────────────────
+    classDef io fill:#1c2333,stroke:#1c2333,color:#e2ddd6,font-weight:bold
+    classDef process fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    classDef lint fill:#faeeda,stroke:#854f0b,color:#1a1916,font-size:12px
+    classDef error fill:#faece7,stroke:#c96442,color:#1a1916
+    classDef render fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    classDef storage fill:#f3f0e8,stroke:#706d65,color:#1a1916
+    classDef gate fill:#faece7,stroke:#c96442,color:#1a1916
+
+    class AgentOut,ExportTrigger io
+    class StreamParse,RunEmit,SSETransport,ArtifactParser,LintArtifact,Manifest process
+    class P0Rules,P1Rules,R1,R2,R3,R4,R5 lint
+    class LintFeedback error
+    class HtmlRender,DeckRender,ReactRender,MdRender,SvgRender,PreviewIframe render
+    class SQLiteSave,FileSystem storage
+    class ArtifactDetect,P0Found,RendererPick gate
+    class TextDisplay,ExportHtml,ExportPdf,ExportPptx,ExportZip,ExportMd process

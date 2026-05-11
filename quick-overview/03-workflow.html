@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workflow — Open Design Docs</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="index.html">Open <em>Design</em></a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="01-introduction.html">Introduction</a>
+    <a href="02-architecture.html">Architecture</a>
+    <a href="03-workflow.html" class="active">Workflow</a>
+    <a href="04-skills.html">Skills</a>
+    <a href="05-design-systems.html">Design Systems</a>
+    <a href="06-reference.html">Reference</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="crumb"><a href="index.html">Docs</a> / Workflow</div>
+    <h1>Working <em>Workflow</em></h1>
+    <p>Setup, the 4-stage design loop, turn-by-turn prompt choreography, all four modes, comment mode, customization, and export.</p>
+  </div>
+</div>
+
+<div class="doc-layout">
+  <aside class="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-title">On this page</div>
+      <a href="#prerequisites">Prerequisites</a>
+      <a href="#setup">Setup (3 commands)</a>
+      <a href="#first-use">First use</a>
+      <a href="#the-loop">The 4-stage loop</a>
+      <a href="#modes">Four modes</a>
+      <a href="#comment-mode">Comment mode</a>
+      <a href="#iteration">Iteration patterns</a>
+      <a href="#customization">Customization</a>
+      <a href="#export">Export</a>
+      <a href="#best-practices">Best practices</a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-title">Related</div>
+      <a href="04-skills.html">→ Skills protocol</a>
+      <a href="05-design-systems.html">→ Design systems</a>
+    </div>
+  </aside>
+
+  <main>
+
+    <section id="prerequisites">
+      <div class="eyebrow"><span>01</span> Prerequisites</div>
+      <h2>What you need before starting</h2>
+      <div class="grid3">
+        <div class="card"><h4>🤖 A coding agent CLI</h4><p>Install at least one: <code>claude</code> (Claude Code), <code>codex</code>, <code>cursor-agent</code>, or <code>gemini</code>. OD auto-detects whatever is on <code>$PATH</code>.</p></div>
+        <div class="card"><h4>🔑 An API key</h4><p>For your agent CLI (e.g. <code>ANTHROPIC_API_KEY</code>) or use BYOK mode. Daemon never holds credentials — they stay in your environment.</p></div>
+        <div class="card"><h4>⚙️ Node.js + npm/pnpm</h4><p>Node 18+. No Docker, no database, no accounts. Everything runs locally with a single <code>npm install</code>.</p></div>
+      </div>
+    </section>
+
+    <section id="setup">
+      <div class="eyebrow"><span>02</span> Setup</div>
+      <h2>Three commands to start</h2>
+      <pre><span class="c"># 1. Clone and install</span>
+git clone https://github.com/nexu-io/open-design
+cd open-design
+npm install
+
+<span class="c"># 2. Start daemon (:7456) + Vite web UI (:5173)</span>
+npm run dev:all
+
+<span class="c"># 3. Open</span>
+open http://localhost:5173</pre>
+
+      <h3>All npm scripts</h3>
+      <table>
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>npm run dev:all</code></td><td>Starts daemon + Vite together — the primary dev command</td></tr>
+          <tr><td><code>npm run daemon</code></td><td>Just the daemon (no web UI)</td></tr>
+          <tr><td><code>npm run dev</code></td><td>Just Vite (API calls fail if daemon isn't separately running)</td></tr>
+          <tr><td><code>npm run build</code></td><td>Production build of frontend → <code>dist/</code></td></tr>
+          <tr><td><code>npm run start</code></td><td>Build + daemon serving <code>dist/</code> — single-process production mode</td></tr>
+          <tr><td><code>npm run typecheck</code></td><td><code>tsc -b --noEmit</code> type checking</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-blue">
+        <strong>Production mode:</strong> <code>npm run start</code> serves the built SPA from the daemon itself at <code>http://localhost:7456</code>. One process, one port, no proxy involved.
+      </div>
+    </section>
+
+    <section id="first-use">
+      <div class="eyebrow"><span>03</span> First use</div>
+      <h2>What you see on first load</h2>
+      <p>Three controls are pre-selected in the top bar. You can change all three at any time — the next send uses the new combination immediately:</p>
+      <table>
+        <thead><tr><th>Control</th><th>Default</th><th>What it changes</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Agent</strong></td><td>Auto-detected from <code>$PATH</code></td><td>Which CLI gets spawned; affects capabilities (comment mode, sliders) available</td></tr>
+          <tr><td><strong>Skill</strong></td><td><code>web-prototype</code></td><td>The design workflow — what type of artifact, what quality rules, what reference files</td></tr>
+          <tr><td><strong>Design system</strong></td><td>Neutral Modern</td><td>Visual identity — palette, fonts, spacing, component style. Injected into every generation.</td></tr>
+        </tbody>
+      </table>
+      <p>Type any prompt describing what you want and hit Send. The 4-stage loop begins immediately.</p>
+    </section>
+
+    <section id="the-loop">
+      <div class="eyebrow"><span>04</span> The loop</div>
+      <h2>The 4-stage design loop</h2>
+      <p>Every generation flows through this sequence, enforced by the discovery prompt rules. The stages are not skippable — they exist to prevent the agent from improvising bad aesthetics.</p>
+
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-body">
+            <h4>Detect → Agent &amp; context loaded</h4>
+            <p>Daemon scans <code>$PATH</code> for 12 coding agents. Auto-loads 31 skills + 72 design systems on boot. Selects best available agent. Zero config needed.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-body">
+            <h4>Discover → Brief locked in 30 seconds</h4>
+            <p>Turn 1 is always a question form — never code, never file reads. Questions: output type (deck/prototype/dashboard/…), platform surface, who the audience is, what visual tone (up to 2 choices), and optionally a brand reference URL or screenshot. Answering takes 30 seconds. Skipping causes 30 minutes of redirect loops.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-body">
+            <h4>Direct → Visual direction chosen</h4>
+            <p>If you said "pick a direction for me", a second form presents 5 curated visual directions. Each has a specific OKLch palette, font pairing, spacing rhythm, and layout posture cue. You pick one. The agent is now locked to that aesthetic — no improvising.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-body">
+            <h4>Deliver → Artifact generated + previewed</h4>
+            <p>TodoWrite plan streams live. Agent pre-reads skill reference files (enforced). Writes to disk. 5-dimensional self-critique runs. <code>&lt;artifact&gt;</code> emitted. Preview loads in sandboxed iframe. Click "Save to disk" to persist under <code>./.od/artifacts/</code>.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>What "deliver" looks like in real time</h3>
+      <ul class="flist">
+        <li>A live <strong>TodoWrite list</strong> streams in the chat pane — you see exactly what the agent is planning</li>
+        <li>The <strong>artifact tree</strong> populates with file names as they're created on disk</li>
+        <li>The <strong>preview iframe</strong> hot-reloads as <code>index.html</code> is written, debounced at 100ms</li>
+        <li>When the agent finishes, the <strong>5-dim critique gate</strong> runs silently — low scores trigger revision</li>
+        <li>The final preview loads with <strong>comment mode and sliders</strong> now active</li>
+      </ul>
+    </section>
+
+    <section id="modes">
+      <div class="eyebrow"><span>05</span> Modes</div>
+      <h2>Four design modes</h2>
+      <p>Each mode maps to a distinct skill type and a distinct workflow shape. The mode picker in the top bar routes you to the correct skill set and enables the right export options.</p>
+
+      <table>
+        <thead><tr><th>Mode</th><th>What you get</th><th>Time to first result</th><th>Primary export</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Prototype</strong></td><td>Single editable screen (HTML/JSX)</td><td>60–120s</td><td>HTML, PDF, ZIP</td></tr>
+          <tr><td><strong>Deck</strong></td><td>Multi-slide HTML presentation</td><td>90–180s</td><td>HTML, PPTX, PDF</td></tr>
+          <tr><td><strong>Template</strong></td><td>Populated copy of a curated template</td><td>20–40s</td><td>HTML, ZIP</td></tr>
+          <tr><td><strong>Design System</strong></td><td>A <code>DESIGN.md</code> + sample component preview</td><td>60–180s</td><td>DESIGN.md</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Mode: Prototype</h3>
+      <p>One high-fidelity interactive screen. The UX flow: skill picker → optional structured inputs form → free-text prompt → generate → preview with comment mode and sliders → export. Default skills: <code>saas-landing</code>, <code>dashboard</code>, <code>pricing-page</code>, <code>docs-page</code>, <code>blog-post</code>, <code>mobile-app</code>.</p>
+
+      <h3>Mode: Deck</h3>
+      <p>Multi-slide magazine-quality presentation. Same flow as prototype but the skill picker shows only deck skills, the preview renders with arrow-key/scrollwheel navigation, and export adds PPTX as a first-class option. Deck skills emit a <code>slides.json</code> intermediate for PPTX generation. Default skill: <code>guizang-ppt</code> (fork of the viral op7418/guizang-ppt-skill).</p>
+
+      <h3>Mode: Template</h3>
+      <p>The fast path. Agent copies <code>assets/template/</code> to the artifact dir and personalizes content — no design decisions made from scratch. Much faster than prototype mode (20–40s), higher quality floor, lower ceiling. Best for: known layout patterns you use repeatedly.</p>
+
+      <h3>Mode: Design System</h3>
+      <p>Generates a <code>DESIGN.md</code> from a text brief, screenshot, or reference URL. After the run, OD prompts you to set this DESIGN.md as the project's active design system — it becomes the visual context for all future generations. This is the highest-leverage thing you can do for output consistency.</p>
+    </section>
+
+    <section id="comment-mode">
+      <div class="eyebrow"><span>06</span> Comment mode</div>
+      <h2>Comment mode — surgical edits</h2>
+      <p>Comment mode activates once the preview loads and is available when the active agent has <code>surgicalEdit</code> capability (currently: Claude Code, and constrained versions for other agents).</p>
+
+      <div class="flow">
+        <div class="flow-step"><div class="flow-num">1</div><div class="flow-body"><h4>Click an element in the preview</h4><p>The web app captures the <code>[data-od-id]</code> attribute from the sandboxed iframe DOM on the element you clicked.</p></div></div>
+        <div class="flow-step"><div class="flow-num">2</div><div class="flow-body"><h4>Write your note in the popover</h4><p>E.g. "Make this headline 20% larger", "Change this button to an outline style", "Replace this image with a data chart".</p></div></div>
+        <div class="flow-step"><div class="flow-num">3</div><div class="flow-body"><h4>Daemon sends surgical edit request</h4><p>Sends <code>{ artifactId, elementId, note }</code> to the agent. The agent receives the original file + element ID + your note.</p></div></div>
+        <div class="flow-step"><div class="flow-num">4</div><div class="flow-body"><h4>Agent applies targeted edit</h4><p>Claude Code uses its native tool loop to edit only that region. Other adapters get a constrained re-generation: "only change element X". Preview hot-reloads when the file write lands.</p></div></div>
+      </div>
+
+      <div class="callout callout-orange">
+        <strong>Capability gating:</strong> If the active agent lacks <code>surgicalEdit</code> capability, comment mode is disabled in the UI for that session. Switch to Claude Code to enable it.
+      </div>
+    </section>
+
+    <section id="iteration">
+      <div class="eyebrow"><span>07</span> Iteration</div>
+      <h2>Iteration patterns</h2>
+      <p>Three ways to refine an artifact after first generation:</p>
+
+      <div class="grid3">
+        <div class="card">
+          <h4>💬 Chat refinement</h4>
+          <p>Free-text in the chat pane: "Move the CTA above the fold", "Add a pricing comparison table", "Make the hero section full-screen". Full regeneration with the new instruction added to context.</p>
+        </div>
+        <div class="card">
+          <h4>💡 Comment mode</h4>
+          <p>Click a specific element. Write a targeted note. Only that element is modified — much faster than full regeneration for small changes. Requires <code>surgicalEdit</code> capability.</p>
+        </div>
+        <div class="card">
+          <h4>🎛️ Sliders</h4>
+          <p>If the skill declares <code>od.parameters</code> (e.g. <code>accent_hue</code>, <code>section_spacing</code>), live slider controls appear. Moving a slider re-sends only the changed parameter — instant aesthetic tweaks with no round-trip.</p>
+        </div>
+      </div>
+
+      <h3>Iteration strategy guide</h3>
+      <ul class="flist">
+        <li>Use <strong>chat</strong> for structural changes: layout shifts, new sections, content rewrites</li>
+        <li>Use <strong>comment mode</strong> for component-level changes: button styles, typography, color tweaks on specific elements</li>
+        <li>Use <strong>sliders</strong> for global aesthetic parameters: overall accent hue, spacing density, font scale</li>
+        <li>Use <strong>skill swap</strong> to try the same brief in a completely different surface type</li>
+        <li>Use <strong>design system swap</strong> to try the same brief in a different brand language</li>
+      </ul>
+    </section>
+
+    <section id="customization">
+      <div class="eyebrow"><span>08</span> Customization</div>
+      <h2>Customizing the workflow</h2>
+      <p>Every layer of the system is a file you can edit or replace. Here are the main customization paths:</p>
+
+      <h3>Write a custom skill</h3>
+      <p>Drop a folder in <code>./skills/</code> with a <code>SKILL.md</code>. The daemon hot-reloads it — no restart needed in dev mode.</p>
+      <pre><span class="c"># Minimum structure</span>
+./skills/
+└── my-skill/
+    ├── SKILL.md           <span class="c"># frontmatter + workflow instructions (required)</span>
+    ├── assets/            <span class="c"># template files the agent writes from</span>
+    └── references/        <span class="c"># knowledge docs the agent reads first</span>
+        ├── checklist.md   <span class="c"># quality checklist enforced by skill</span>
+        └── components.md  <span class="c"># component library reference</span></pre>
+
+      <h3>Create a brand design system</h3>
+      <pre><span class="c"># Create DESIGN.md in your project root</span>
+touch ./DESIGN.md
+<span class="c"># Daemon finds it automatically — overrides all 72 built-in systems</span></pre>
+
+      <h3>Skill priority (which wins on name conflicts)</h3>
+      <table>
+        <thead><tr><th>Location</th><th>Priority</th><th>Committed to git?</th><th>Scope</th></tr></thead>
+        <tbody>
+          <tr><td><code>./.claude/skills/</code></td><td><span class="badge badge-o">1 — Highest</span></td><td>No (gitignored)</td><td>Project-private</td></tr>
+          <tr><td><code>./skills/</code></td><td><span class="badge badge-b">2 — Medium</span></td><td>Yes</td><td>Project-shared with team</td></tr>
+          <tr><td><code>~/.claude/skills/</code></td><td><span class="badge badge-g">3 — Lowest</span></td><td>n/a</td><td>Global — all projects on machine</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Use a different AI provider (BYOK)</h3>
+      <p>Switch the mode picker to "Anthropic API · BYOK" and paste a <code>baseUrl</code> + API key for any OpenAI-compatible provider:</p>
+      <div class="grid2">
+        <div class="card"><h4>DeepSeek</h4><p>Paste DeepSeek baseUrl + API key. Full tool use supported.</p></div>
+        <div class="card"><h4>Groq</h4><p>Paste Groq baseUrl + API key. Fast inference for prototyping.</p></div>
+        <div class="card"><h4>OpenRouter</h4><p>Single key, access to many models. Route to any supported model.</p></div>
+        <div class="card"><h4>Self-hosted vLLM</h4><p>Paste your local <code>http://localhost:8000</code> baseUrl. Fully air-gapped.</p></div>
+      </div>
+    </section>
+
+    <section id="export">
+      <div class="eyebrow"><span>09</span> Export</div>
+      <h2>Export your artifact</h2>
+      <p>When generation finishes, the Export menu in the top-right becomes available. The artifact is always already on disk at <code>./.od/artifacts/&lt;slug&gt;/</code> — export formats are generated on-demand from that source.</p>
+
+      <table>
+        <thead><tr><th>Format</th><th>Best for</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><strong>HTML (self-contained)</strong></td><td>Sharing, embedding, deploying</td><td>All CSS inlined, assets as data: URIs. Single file, works fully offline.</td></tr>
+          <tr><td><strong>ZIP</strong></td><td>Full project handoff</td><td>Complete folder including all assets. Open <code>index.html</code> in any browser.</td></tr>
+          <tr><td><strong>PDF</strong></td><td>Print, email, formal delivery</td><td>Puppeteer renders the HTML. Full CSS + web font support. (Phase 2)</td></tr>
+          <tr><td><strong>PPTX</strong></td><td>Deck presentations, PowerPoint users</td><td>Via pptxgenjs from <code>slides.json</code>. Deck mode only. (Phase 2)</td></tr>
+          <tr><td><strong>Markdown</strong></td><td>Documentation, editorial content</td><td>Available for skills that output <code>.md</code> as primary artifact.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Working with artifacts outside OD</h3>
+      <ul class="flist">
+        <li>Every artifact folder is self-contained — open <code>index.html</code> in any browser without running OD</li>
+        <li>Commit <code>./.od/artifacts/</code> to git to track design history like code — review in PRs</li>
+        <li>Deploy the HTML file to any CDN or static host directly</li>
+        <li>The <code>artifact.json</code> records the exact skill, design system, prompt hash, and parent artifact for full reproducibility</li>
+      </ul>
+    </section>
+
+    <section id="best-practices">
+      <div class="eyebrow"><span>10</span> Best practices</div>
+      <h2>Best practices for quality output</h2>
+      <ul class="flist">
+        <li><strong>Create a project DESIGN.md first.</strong> Run the Design System mode with your brand brief before any prototype generation. This single action has the highest impact on output quality and consistency.</li>
+        <li><strong>Pair skill + design system intentionally.</strong> <code>dashboard</code> + <code>Linear</code> is very different from <code>dashboard</code> + <code>Stripe</code>. Spend time exploring pairings.</li>
+        <li><strong>Answer the discovery form fully.</strong> The 30-second brief locks in parameters that prevent the agent from making arbitrary aesthetic decisions. Don't skip it.</li>
+        <li><strong>Use comment mode for small changes.</strong> Full regeneration for layout shifts; comment mode for component-level tweaks. Much faster iteration.</li>
+        <li><strong>Write skills for repeated patterns.</strong> If you produce the same type of UI repeatedly, write a <code>SKILL.md</code> for it with your quality checklist. Every future generation follows it exactly.</li>
+        <li><strong>Commit <code>./.od/</code> to git.</strong> Design history is as valuable as code history. Review design decisions in pull requests just like code changes.</li>
+        <li><strong>Target the 5-dim critique.</strong> If output feels generic, look at which dimension is failing: Is it Philosophy (no point of view)? Specificity (generic copy)? Restraint (too much going on)?</li>
+      </ul>
+    </section>
+
+    <div class="next-page">
+      <a href="04-skills.html" class="next-link">
+        <span class="next-label">Next: Skills Protocol →</span>
+        <span class="next-sub">All 31 skills, SKILL.md format, OD extensions, writing custom skills</span>
+      </a>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <div class="footer-brand">Open <em>Design</em></div>
+  <div>Apache-2.0 · <a href="https://github.com/nexu-io/open-design">github.com/nexu-io/open-design</a></div>
+</footer>
+</body>
+</html>

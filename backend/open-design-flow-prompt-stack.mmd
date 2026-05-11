@@ -1,0 +1,68 @@
+flowchart TD
+    %% ── INPUT ────────────────────────────────────────────────
+    Input(["composeSystemPrompt(input)\napps/daemon/src/prompts/system.ts"])
+
+    %% ── ALWAYS-ON LAYERS ─────────────────────────────────────
+    L1["Layer 1 — DISCOVERY_AND_PHILOSOPHY\nprompts/discovery.ts\n\n• Turn-1: emit &lt;question-form id='discovery'&gt; then stop\n• Turn-2: branch on brand answer\n• Turn-3+: TodoWrite plan + live updates\n• 5-dimensional self-critique axes\n• Junior-Designer mode (questions before pixels)"]
+
+    L2["Layer 2 — OFFICIAL_DESIGNER_PROMPT\nprompts/official-system.ts\n\n• Identity: 'expert designer, HTML is your tool'\n• Artifact handoff: single &lt;artifact&gt; block rule\n• Anti-AI-slop mandate\n• React + Babel pinned versions\n• Floating tweaks panel rule"]
+
+    %% ── CONDITIONAL LAYERS ───────────────────────────────────
+    HasDS{{"designSystemBody\npresent?"}}
+    L3["Layer 3 — Active DESIGN.md body\ndesign-systems/&lt;id&gt;/DESIGN.md\n\n• 9-section brand schema\n• Color palette + typography\n• Components + layout\n• Motion + voice + anti-patterns\n• Treated as authoritative brand tokens"]
+
+    HasCraft{{"craftBody\npresent?"}}
+    L4["Layer 4 — Craft Sections\ncraft/*.md  (opt-in via od.craft.requires)\n\nSlugs: typography · color · anti-ai-slop\nstate-coverage · animation-discipline\naccessibility-baseline · rtl-and-bidi\nform-validation · laws-of-ux"]
+
+    HasSkill{{"skillBody\npresent?"}}
+    Preflight["derivePreflight(skillBody)\n→ detects refs to assets/template.html\n→ detects refs to references/*.md\n→ injects hard-read RULE above skill body\n'Before writing code: Read tool → .od-skills/...'"]
+    L5["Layer 5 — Active SKILL.md body\nskills/&lt;id&gt;/SKILL.md\n\n• Workflow rules for this output type\n• P0/P1/P2 quality checklists\n• od.craft.requires → craft/ files above\n• Preflight preamble prepended"]
+
+    HasMeta{{"metadata\nblock?"}}
+    L6["Layer 6 — Project Metadata Block\nrenderMetadataBlock()\n\n• kind · fidelity · intent · animations\n• speaker notes · template reference\n• image/video/audio model params\n• Unknown fields marked '(unknown — ask)'"]
+
+    IsDeck{{"skillMode='deck'\nOR kind='deck'\nAND no template.html?"}}
+    L7["Layer 7 — DECK_FRAMEWORK_DIRECTIVE\nprompts/deck-framework.ts\n\n• Pinned last — overrides earlier nav/print wording\n• 1920×1080 fixed skeleton\n• Scale-to-fit transform\n• Keyboard nav + localStorage restore\n• @media print page-break rule"]
+
+    IsMedia{{"image / video\n/ audio surface?"}}
+    L8["Layer 8 — MEDIA_GENERATION_CONTRACT\nprompts/media-contract.ts\n\n• Media-specific output rules\n• Image prompt template\n• Video/audio constraints"]
+
+    IsCodexImg{{"agent=codex\nAND gpt-image-* model?"}}
+    L9["Layer 9 — Codex Imagegen Override\nresolveCodexImagegenModelId()\n\n• Codex-specific image generation directive\n• Model ID injected into system prompt"]
+
+    IsCritique{{"critique.enabled\nAND not media?"}}
+    L10["Layer 10 — Critique Theater Addendum\ncritique/orchestrator.ts\n\n• Panelist roles: designer · engineer · product · brand\n• 5-dimension scoring schema\n• &lt;PANELIST&gt; · &lt;SCORE dim='...'&gt; · &lt;ROUND&gt; · &lt;SHIP&gt; tags\n• Composite threshold from OD_CRITIQUE_SCORE_THRESHOLD"]
+
+    %% ── OUTPUT ───────────────────────────────────────────────
+    Output(["Composed system prompt string\n→ buildArgs() → child_process.spawn()"])
+
+    %% ── EDGES ────────────────────────────────────────────────
+    Input --> L1 --> L2 --> HasDS
+    HasDS -->|yes| L3 --> HasCraft
+    HasDS -->|no| HasCraft
+    HasCraft -->|yes| L4 --> HasSkill
+    HasCraft -->|no| HasSkill
+    HasSkill -->|yes| Preflight --> L5 --> HasMeta
+    HasSkill -->|no| HasMeta
+    HasMeta -->|yes| L6 --> IsDeck
+    HasMeta -->|no| IsDeck
+    IsDeck -->|yes| L7 --> IsMedia
+    IsDeck -->|no| IsMedia
+    IsMedia -->|yes| L8 --> IsCodexImg
+    IsMedia -->|no| IsCodexImg
+    IsCodexImg -->|yes| L9 --> IsCritique
+    IsCodexImg -->|no| IsCritique
+    IsCritique -->|yes| L10 --> Output
+    IsCritique -->|no| Output
+
+    %% ── STYLES ────────────────────────────────────────────────
+    classDef always fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    classDef conditional fill:#f3f0e8,stroke:#706d65,color:#1a1916
+    classDef gate fill:#faece7,stroke:#c96442,color:#1a1916
+    classDef io fill:#1c2333,stroke:#1c2333,color:#e2ddd6
+
+    class L1,L2 always
+    class L3,L4,L5,L6,L7,L8,L9,L10 conditional
+    class HasDS,HasCraft,HasSkill,HasMeta,IsDeck,IsMedia,IsCodexImg,IsCritique gate
+    class Input,Output io
+    class Preflight conditional

@@ -1,0 +1,76 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant Browser as Browser (WebUI)
+    participant Daemon
+    participant SQLite
+    participant SkillLoader
+    participant CwdAliases
+    participant PromptComposer
+    participant ClaudeCLI as ClaudeCode CLI
+    participant StreamParser
+    participant ArtifactParser
+    participant LintChecker
+
+    User->>Browser: Submit message in chat
+    Browser->>Daemon: POST /api/chat { projectId, conversationId, agentId:'claude', prompt, model }
+    Daemon->>SQLite: runs.create() → status:'queued'
+    Daemon->>Browser: SSE response opened → event:start
+
+    rect rgb(230, 240, 255)
+        Note over Daemon,CwdAliases: Skill & Design System loading
+        Daemon->>SQLite: SELECT project (skill_id, design_system_id, metadata)
+        Daemon->>SkillLoader: listSkills() + findSkillById(skillId)
+        SkillLoader-->>Daemon: skillBody (SKILL.md + references/*.md)
+        Daemon->>SkillLoader: readDesignSystem(designSystemId)
+        SkillLoader-->>Daemon: designSystemBody (DESIGN.md)
+        Daemon->>SkillLoader: loadCraftSections(skill.craftRequires)
+        SkillLoader-->>Daemon: craftBody (universal craft rules)
+        Daemon->>CwdAliases: stageActiveSkill(skillId, projectDir)
+        CwdAliases-->>Daemon: staged to .od/projects/id/.od-skills/skillId/
+    end
+
+    rect rgb(230, 255, 230)
+        Note over Daemon,PromptComposer: Prompt composition (10-layer stack)
+        Daemon->>PromptComposer: composeSystemPrompt(skill, ds, craft, metadata, opts)
+        Note over PromptComposer: L1 DISCOVERY_AND_PHILOSOPHY<br/>L2 OFFICIAL_DESIGNER_PROMPT<br/>L3 Active DESIGN.md body<br/>L4 derivePreflight() + SKILL.md body<br/>L5-9 opt metadata / deck / media / codex / critique
+        PromptComposer-->>Daemon: composed system prompt string
+    end
+
+    rect rgb(255, 245, 220)
+        Note over Daemon,ClaudeCLI: Spawn Claude Code CLI
+        Daemon->>Daemon: buildArgs() → argv (prompt via -p flag)
+        Daemon->>Daemon: spawnEnvForAgent() → env OD_DAEMON_URL, OD_PROJECT_ID, OD_PROJECT_DIR
+        Daemon->>ClaudeCLI: child_process.spawn('claude', args, cwd:.od/projects/id/, env)
+        ClaudeCLI->>ClaudeCLI: reads .od-skills/skillId/assets/template.html (pre-flight)
+        ClaudeCLI->>ClaudeCLI: reads .od-skills/skillId/references/checklist.md
+        ClaudeCLI->>ClaudeCLI: generates HTML
+        ClaudeCLI->>ClaudeCLI: writes to .od/projects/id/output.html
+    end
+
+    rect rgb(255, 230, 230)
+        Note over ClaudeCLI,StreamParser: JSONL stream processing
+        ClaudeCLI->>StreamParser: emits JSONL stdout (system/init, stream_events, result)
+        StreamParser->>StreamParser: createClaudeStreamHandler() parses each line → AgentEvent
+        StreamParser->>Daemon: text_delta, thinking_delta, tool_use, tool_result
+        Daemon->>Browser: SSE agent events streaming
+        StreamParser->>ArtifactParser: detects artifact tag in text stream
+        ArtifactParser->>Browser: SSE artifact:start / artifact:chunk / artifact:end
+    end
+
+    ClaudeCLI->>Daemon: process exit (code 0)
+    Daemon->>Daemon: runs.finish('succeeded')
+
+    rect rgb(240, 230, 255)
+        Note over Daemon,LintChecker: Post-generation lint
+        Daemon->>LintChecker: lintArtifact(artifactHtml)
+        LintChecker-->>Daemon: findings[] (P0/P1/P2)
+        alt P0 findings exist
+            Daemon->>Browser: SSE lint-feedback event
+            Note over Daemon,Browser: Agent self-corrects on next turn
+        end
+    end
+
+    Daemon->>SQLite: saves message + artifact ref
+    Browser->>Browser: srcdoc iframe updated with artifact HTML
+    Daemon->>Browser: SSE event:end

@@ -1,0 +1,94 @@
+flowchart TD
+    User(["User (Browser)"])
+    WebUI["WebUI\nNext.js 16 App Router\napps/web"]
+    BYOKProxy["BYOK Proxy\nPOST /api/proxy/{anthropic,openai,azure,google}/stream\n(no daemon, direct API call)"]
+    Daemon["Daemon\nExpress + Node 24\napps/daemon/src/server.ts"]
+    SQLite[("SQLite\n.od/app.sqlite\n7 tables: projects, conversations,\nmessages, templates, deployments,\ntabs, preview_comments")]
+    AgentDetect["detectAgents()\nPATH scan on startup\napps/daemon/src/agents.ts\n16 agents probed"]
+    PromptComposer["composeSystemPrompt()\n4-layer stack\napps/daemon/src/prompts/system.ts"]
+    Layer1["Layer 1: OFFICIAL_DESIGNER_PROMPT\nDesigner identity charter\nprompts/official-system.ts"]
+    Layer2["Layer 2: DISCOVERY_AND_PHILOSOPHY\nTurn-1 question form, brand branch\nprompts/discovery.ts + directions.ts"]
+    Layer3["Layer 3: Active DESIGN.md body\nPalette, typography, spacing tokens\ndesign-systems/<name>/DESIGN.md"]
+    Layer4["Layer 4: Active SKILL.md body\nWorkflow + preflight rules\nskills/<name>/SKILL.md"]
+    LayerDeck["Deck Framework Directive\n(pinned last for deck-mode)\nprompts/deck-framework.ts"]
+    SkillStager["stageActiveSkill()\nCopy skill folder to\n.od/projects/id/.od-skills/name/\napps/daemon/src/cwd-aliases.ts"]
+    Spawn["child_process.spawn(cliPath, args)\ncwd = .od/projects/id/\napps/daemon/src/server.ts"]
+    AgentCLI["Agent CLI Process\ne.g. claude / codex / gemini /\nopencode / devin / cursor-agent / …"]
+    FileSystem[("FileSystem\n.od/projects/id/\nartifact HTML files\n.od-skills/ staged copies\ntemplate.html, references/")]
+    StreamParser["Stream Parser\nper-format\nclaude-stream-json → claude-stream.ts\nqoder-stream-json → qoder-stream.ts\njson-event-stream → json-event-stream.ts\nacp-json-rpc → acp.ts\npi-rpc → pi-rpc.ts\nplain → raw text"]
+    RunRegistry["SSE Run Registry\nIn-memory, 2000 events/run\n30-min TTL\napps/daemon/src/runs.ts"]
+    SSEStream["SSE Stream\nGET /api/chat/run/:id/stream\nServer-Sent Events"]
+    ArtifactParser["ArtifactParser\nStreaming artifact tag parser\napps/web/src/artifacts/parser.ts"]
+    LintChecker["lint-artifact.ts\nAnti-slop grep checks\nP0: purple/indigo gradients, slop emoji,\ninvented metrics, lorem filler\nP1/P2: advisory\napps/daemon/src/lint-artifact.ts"]
+    PreviewIframe["Preview iframe\nsrcdoc render\nSandboxed in browser"]
+    ExportPipeline["Export Pipeline\nHTML / PDF / PPTX / ZIP / Markdown\napps/daemon/src/transcript-export.ts\n[PDF/PPTX internals Uncertain]"]
+    Electron["Electron Desktop (optional)\napps/desktop\ndiscoveries web URL via sidecar IPC"]
+    SidecarIPC["Sidecar IPC\nUnix socket\n/tmp/open-design/ipc/ns/app.sock\npackages/sidecar-proto"]
+    MCPServer["MCP stdio server\n8 read-only tools\n`od mcp`\napps/daemon/src/mcp.ts"]
+    MCPClient["External Coding Agent\ne.g. Claude Code in another repo\nusing MCP to pull OD project files"]
+    MediaGen["Media Generation\nBYOK: image / video / audio\napps/daemon/src/media.ts\n[provider internals Uncertain]"]
+
+    %% User interaction
+    User -->|"submit prompt, select skill + design system"| WebUI
+
+    %% WebUI to daemon (main chat path)
+    WebUI -->|"POST /api/chat"| Daemon
+
+    %% WebUI to BYOK proxy (no-daemon topology)
+    WebUI -->|"POST /api/proxy/.../stream\n(no daemon mode)"| BYOKProxy
+
+    %% Daemon startup
+    Daemon -->|"startup probe"| AgentDetect
+
+    %% Prompt composition
+    Daemon --> PromptComposer
+    PromptComposer --> Layer2
+    PromptComposer --> Layer1
+    PromptComposer --> Layer3
+    PromptComposer --> Layer4
+    PromptComposer -->|"deck-mode only"| LayerDeck
+
+    %% Skill staging
+    Daemon --> SkillStager
+    SkillStager -->|"copy skill folder"| FileSystem
+
+    %% Agent spawn
+    Daemon --> Spawn
+    Spawn -->|"argv built by buildArgs()\napps/daemon/src/agents.ts"| AgentCLI
+
+    %% Agent reads/writes filesystem
+    AgentCLI -->|"Read template.html\nRead references/checklist.md\nRead .od-skills/ staged files"| FileSystem
+    AgentCLI -->|"Write artifact HTML"| FileSystem
+
+    %% Agent stdout → parser → registry
+    AgentCLI -->|"stdout: line-delimited JSON\nor ACP JSON-RPC or plain text"| StreamParser
+    StreamParser -->|"typed AgentEvents\n(text/thinking/tool_use/status)"| RunRegistry
+    RunRegistry -->|"SSE events"| SSEStream
+
+    %% SSE to web
+    SSEStream -->|"delta events"| WebUI
+
+    %% Web artifact rendering
+    WebUI --> ArtifactParser
+    ArtifactParser -->|"artifact:start / artifact:chunk / artifact:end"| PreviewIframe
+
+    %% Lint checker
+    Daemon -->|"POST /api/artifacts/save\nor POST /api/artifacts/lint"| LintChecker
+    LintChecker -->|"P0 findings fed back as system message"| Daemon
+
+    %% Persistence
+    Daemon <-->|"projects / conversations / messages\ntabs / templates / deployments\npreview_comments"| SQLite
+
+    %% Export
+    Daemon --> ExportPipeline
+
+    %% Sidecar IPC and Electron
+    SidecarIPC <-->|"app status, web URL"| Electron
+    Daemon <-->|"stamp registration"| SidecarIPC
+
+    %% MCP server
+    MCPServer -->|"fetch() to daemon HTTP API"| Daemon
+    MCPClient -->|"stdio MCP protocol"| MCPServer
+
+    %% Media generation
+    Daemon --> MediaGen

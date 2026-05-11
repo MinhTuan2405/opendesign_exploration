@@ -1,0 +1,62 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant Browser as Browser (WebUI)
+    participant Daemon
+    participant ACPSession as ACPSession (attachAcpSession)
+    participant HermesAgent as Hermes Agent Process
+    participant MCPBridge as MCP Bridge
+    participant ArtifactParser
+
+    User->>Browser: Submit message (agentId:'hermes')
+    Browser->>Daemon: POST /api/chat { agentId:'hermes', projectId, prompt, model }
+    Daemon->>Browser: SSE response opened → event:start
+    Daemon->>HermesAgent: child_process.spawn('hermes', acpArgs, cwd:.od/projects/id/)
+
+    rect rgb(230, 240, 255)
+        Note over Daemon,HermesAgent: ACP JSON-RPC handshake
+        Daemon->>ACPSession: attachAcpSession({ child, prompt, model, systemPrompt })
+        ACPSession->>HermesAgent: stdin { jsonrpc:'2.0', method:'initialize' }
+        HermesAgent-->>ACPSession: stdout { capabilities: {...} }
+        ACPSession->>HermesAgent: stdin { method:'session/new' }
+        HermesAgent-->>ACPSession: stdout { sessionId: '...' }
+        ACPSession->>HermesAgent: stdin { method:'session/set_model', params:{ model } }
+        HermesAgent-->>ACPSession: stdout { ok: true }
+        ACPSession->>HermesAgent: stdin { method:'session/prompt', params:{ prompt: composedSystemPrompt + userMessage } }
+    end
+
+    rect rgb(230, 255, 230)
+        Note over HermesAgent,MCPBridge: Agent tool calls via MCP bridge
+        HermesAgent->>MCPBridge: tools/call search_files { projectId, query:'...' }
+        MCPBridge->>Daemon: GET /api/projects/:id/files?q=...
+        Daemon-->>MCPBridge: file matches (literal substr, case-insensitive, max 200)
+        MCPBridge-->>HermesAgent: search results { file, line, snippet }
+
+        HermesAgent->>MCPBridge: tools/call get_artifact { projectId, filePath }
+        MCPBridge->>Daemon: GET /api/projects/:id/files/:path
+        Note over MCPBridge: BFS traversal of script/link/img/@import refs, soft cap 1.5MB
+        MCPBridge-->>HermesAgent: artifact + supporting files
+    end
+
+    rect rgb(255, 245, 220)
+        Note over HermesAgent,ArtifactParser: Streaming output
+        HermesAgent->>ACPSession: stdout { type:'agent_message_chunk', text:'...' }
+        ACPSession->>Daemon: AgentEvent text_delta
+        Daemon->>Browser: SSE agent(text_delta)
+        HermesAgent->>ACPSession: stdout { type:'agent_thought_chunk', text:'...' }
+        ACPSession->>Daemon: AgentEvent thinking_delta
+        Daemon->>Browser: SSE agent(thinking_delta)
+        HermesAgent->>ACPSession: stdout artifact tag in message
+        ACPSession->>ArtifactParser: artifact content
+        ArtifactParser->>Browser: SSE artifact:start / artifact:chunk / artifact:end
+    end
+
+    alt Normal completion
+        HermesAgent->>ACPSession: stdout { method:'session/close' }
+    else Process exit
+        HermesAgent->>Daemon: process exit
+    end
+
+    Note over ACPSession: stageTimeoutMs 180s per stage enforced throughout
+    Daemon->>Daemon: runs.finish('succeeded')
+    Daemon->>Browser: SSE event:end

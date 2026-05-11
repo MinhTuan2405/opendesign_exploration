@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skills — Open Design Docs</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="index.html">Open <em>Design</em></a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="01-introduction.html">Introduction</a>
+    <a href="02-architecture.html">Architecture</a>
+    <a href="03-workflow.html">Workflow</a>
+    <a href="04-skills.html" class="active">Skills</a>
+    <a href="05-design-systems.html">Design Systems</a>
+    <a href="06-reference.html">Reference</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="crumb"><a href="index.html">Docs</a> / Skills</div>
+    <h1>Skills <em>Protocol</em></h1>
+    <p>The atomic unit of design capability. Base format, OD extensions, all 31 built-in skills, discovery priority, writing your own.</p>
+  </div>
+</div>
+
+<div class="doc-layout">
+  <aside class="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-title">On this page</div>
+      <a href="#what-is-a-skill">What is a skill?</a>
+      <a href="#base-format">Base format</a>
+      <a href="#od-extensions">OD extensions</a>
+      <a href="#discovery">Discovery & priority</a>
+      <a href="#built-in">31 built-in skills</a>
+      <a href="#skill-types">Skill types deep-dive</a>
+      <a href="#writing">Writing a custom skill</a>
+      <a href="#compatibility">Compatibility</a>
+    </div>
+  </aside>
+
+  <main>
+
+    <section id="what-is-a-skill">
+      <div class="eyebrow"><span>01</span> Concept</div>
+      <h2>What is a skill?</h2>
+      <p>A <strong>Skill</strong> is the atomic unit of design capability in OD. It is a directory containing a <code>SKILL.md</code> file (plus optional assets and reference docs) that instructs the agent on <em>how to produce a specific type of design artifact</em>.</p>
+      <p>Skills define: the workflow to follow, the quality checklist to enforce, what reference files to read before generating, what the primary output file should be named, and optionally OD-specific UI extensions like typed input forms and live sliders.</p>
+
+      <div class="callout callout-green">
+        <strong>Compatibility guarantee:</strong> A skill written for plain Claude Code runs in OD without modification. A skill that doesn't use OD extensions (<code>od:</code> frontmatter) runs equally well in plain Claude Code. The OD extensions are purely additive — they unlock UI features without breaking anything.
+      </div>
+    </section>
+
+    <section id="base-format">
+      <div class="eyebrow"><span>02</span> Base format</div>
+      <h2>Base skill structure (Claude Code compatible)</h2>
+
+      <pre><span class="c"># Directory layout — minimum required</span>
+&lt;skill-root&gt;/
+├── SKILL.md              <span class="c"># manifest + workflow instructions (required)</span>
+├── assets/               <span class="c"># templates and boilerplate the agent writes from</span>
+│   ├── template.html     <span class="c"># seed file the agent copies and fills</span>
+│   └── ...
+└── references/           <span class="c"># knowledge docs the agent reads at turn 3</span>
+    ├── components.md     <span class="c"># component library reference</span>
+    ├── layouts.md        <span class="c"># layout patterns reference</span>
+    └── checklist.md      <span class="c"># quality checklist the agent runs before emitting</span></pre>
+
+      <h3>SKILL.md frontmatter (base)</h3>
+      <pre><span class="c">---</span>
+<span class="k">name</span>: my-skill-name
+<span class="k">description</span>: |
+  One paragraph describing what this skill does.
+  Include trigger keywords so the agent can auto-select it.
+  Trigger keywords: landing page, marketing, SaaS homepage
+<span class="k">triggers</span>:
+  - <span class="s">"landing page"</span>
+  - <span class="s">"marketing page"</span>
+  - <span class="s">"SaaS homepage"</span>
+<span class="c">---</span>
+
+<span class="c"># Body: free-form Markdown workflow instructions</span>
+
+## Step 1: Read reference files first (always)
+Before generating anything, read:
+- references/checklist.md
+- references/layouts.md
+
+## Step 2: Clarify brief
+Ask user for product name, key value propositions, and CTA text.
+
+## Step 3: Generate
+Write index.html following the active design system tokens exactly.
+Do not invent colors or fonts not in the DESIGN.md.
+
+## Self-check (before emitting artifact)
+Score output on: Philosophy, Hierarchy, Execution, Specificity, Restraint.
+Revise if any dimension scores below 7/10.</pre>
+    </section>
+
+    <section id="od-extensions">
+      <div class="eyebrow"><span>03</span> OD extensions</div>
+      <h2>OD-specific extensions (all optional)</h2>
+      <p>Skills can declare an <code>od:</code> block in frontmatter to unlock OD-specific UI features. All fields are optional — absent fields fall back to sensible defaults.</p>
+
+      <pre><span class="c">---</span>
+<span class="k">name</span>: magazine-web-ppt
+<span class="k">description</span>: Magazine-style horizontal-swipe web deck.
+<span class="k">triggers</span>: [<span class="s">"magazine deck"</span>, <span class="s">"杂志风 PPT"</span>, <span class="s">"horizontal swipe presentation"</span>]
+
+<span class="c"># ── OD Extensions (all optional) ────────────────────────</span>
+<span class="k">od</span>:
+  <span class="k">mode</span>: deck              <span class="c"># prototype | deck | template | design-system</span>
+  
+  <span class="k">preview</span>:
+    <span class="k">type</span>: html            <span class="c"># html | jsx | pptx | markdown</span>
+    <span class="k">entry</span>: index.html     <span class="c"># which file the iframe loads</span>
+    <span class="k">reload</span>: debounce-100  <span class="c"># how the preview refreshes</span>
+
+  <span class="k">design_system</span>:
+    <span class="k">requires</span>: true        <span class="c"># inject active DESIGN.md into prompt</span>
+    <span class="k">sections</span>: [color, typography]  <span class="c"># token pruning — save tokens</span>
+
+  <span class="k">inputs</span>:               <span class="c"># renders a typed form in sidebar instead of free-text</span>
+    - {<span class="k">name</span>: title, <span class="k">type</span>: string, <span class="k">required</span>: true}
+    - {<span class="k">name</span>: slide_count, <span class="k">type</span>: integer, <span class="k">default</span>: 8, <span class="k">min</span>: 4, <span class="k">max</span>: 20}
+    - {<span class="k">name</span>: theme, <span class="k">type</span>: enum, <span class="k">values</span>: [editorial, minimal, brutalist]}
+
+  <span class="k">parameters</span>:           <span class="c"># live sliders that re-prompt on change post-generation</span>
+    - {<span class="k">name</span>: accent_hue, <span class="k">type</span>: hue, <span class="k">default</span>: 18, <span class="k">range</span>: [0, 360]}
+    - {<span class="k">name</span>: section_spacing, <span class="k">type</span>: spacing, <span class="k">default</span>: 48, <span class="k">range</span>: [16, 128]}
+
+  <span class="k">outputs</span>:
+    <span class="k">primary</span>: index.html   <span class="c"># file the iframe loads</span>
+    <span class="k">secondary</span>: [slides.json]  <span class="c"># files read by export pipeline (e.g. PPTX)</span>
+
+  <span class="k">capabilities_required</span>:
+    - surgical_edit       <span class="c"># disables comment mode if agent lacks this</span>
+    - file_write
+<span class="c">---</span></pre>
+
+      <h3>Extension field reference</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Used by</th><th>Effect when set</th></tr></thead>
+        <tbody>
+          <tr><td><code>od.mode</code></td><td>Mode/skill picker</td><td>Routes skill to the correct mode tab</td></tr>
+          <tr><td><code>od.preview.type</code></td><td>Preview renderer</td><td>Picks iframe render strategy: HTML raw, JSX eval, PPTX viewer, Markdown</td></tr>
+          <tr><td><code>od.preview.entry</code></td><td>Preview iframe</td><td>Which file loads when generation completes</td></tr>
+          <tr><td><code>od.design_system.requires</code></td><td>Prompt builder</td><td>Whether to inject active DESIGN.md into system prompt</td></tr>
+          <tr><td><code>od.design_system.sections</code></td><td>Token optimizer</td><td>Prunes injected DESIGN.md to listed sections only — saves tokens</td></tr>
+          <tr><td><code>od.inputs</code></td><td>Sidebar UI</td><td>Renders a typed form (string / integer / enum / boolean) instead of free-text</td></tr>
+          <tr><td><code>od.parameters</code></td><td>Slider overlay</td><td>Live-tweakable controls after first generation; re-prompts without full round-trip</td></tr>
+          <tr><td><code>od.outputs.primary</code></td><td>Preview + export</td><td>Which file the iframe loads and HTML export inlines</td></tr>
+          <tr><td><code>od.outputs.secondary</code></td><td>Export pipeline</td><td>Files read by export pipeline (e.g. <code>slides.json</code> for PPTX)</td></tr>
+          <tr><td><code>od.capabilities_required</code></td><td>Capability gating</td><td>Disables comment mode or sliders if active agent lacks the capability</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Defaults when <code>od:</code> is omitted</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td>mode</td><td>Inferred from name/description keyword match, else "prototype"</td></tr>
+          <tr><td>preview.type</td><td>Sniffed: *.html → html, *.jsx → jsx, else markdown</td></tr>
+          <tr><td>preview.entry</td><td>First file matching the sniffed type</td></tr>
+          <tr><td>design_system.requires</td><td>true if body mentions "design system" or "DESIGN.md"</td></tr>
+          <tr><td>inputs, parameters</td><td>None (free-text prompt only)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="discovery">
+      <div class="eyebrow"><span>04</span> Discovery</div>
+      <h2>Skill discovery and priority</h2>
+      <p>The daemon scans 3 locations on boot and on file-system watch events. All locations are merged with higher priority winning on name conflicts.</p>
+      <table>
+        <thead><tr><th>Location</th><th>Priority</th><th>Purpose</th><th>Git</th></tr></thead>
+        <tbody>
+          <tr><td><code>./.claude/skills/</code></td><td><span class="badge badge-o">1 Highest</span></td><td>Project-private skills — not shared</td><td>Gitignored</td></tr>
+          <tr><td><code>./skills/</code></td><td><span class="badge badge-b">2 Medium</span></td><td>Project-committed skills — shared with team</td><td>Committed</td></tr>
+          <tr><td><code>~/.claude/skills/</code></td><td><span class="badge badge-g">3 Lowest</span></td><td>User-global skills — available in all projects</td><td>n/a</td></tr>
+        </tbody>
+      </table>
+      <p>All locations are watched with <code>chokidar</code> in dev — add a skill folder and it appears in the UI immediately, no restart needed. In production, send <code>SIGHUP</code> to the daemon to trigger a rescan.</p>
+
+      <div class="callout callout-blue">
+        <strong>Symlink strategy:</strong> Maintain a central skill dir at <code>~/.open-design/skills/</code> and symlink it into each agent's expected location (<code>~/.claude/skills/</code>, <code>~/.codex/skills/</code>, etc.). One install → every agent sees every skill.
+      </div>
+    </section>
+
+    <section id="built-in">
+      <div class="eyebrow"><span>05</span> Built-in skills</div>
+      <h2>All 31 built-in skills</h2>
+
+      <h3>Prototype mode (7 skills)</h3>
+      <div class="skill-grid">
+        <div class="skill-card">
+          <div class="skill-name">web-prototype <span class="skill-default">default</span></div>
+          <div class="skill-mode">prototype</div>
+          <p>Generic single-screen interactive UI prototype. Starting point for any web surface not covered by a more specific skill.</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">saas-landing</div>
+          <div class="skill-mode">prototype</div>
+          <p>Marketing page: hero, feature grid, social proof, pricing CTA. Optimized for product launches and conversion.</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">dashboard</div>
+          <div class="skill-mode">prototype</div>
+          <p>Admin or analytics dashboard. Sidebar navigation, stat cards, chart areas, data tables. Optimized for information density.</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">pricing-page</div>
+          <div class="skill-mode">prototype</div>
+          <p>Standalone pricing section with tier comparison table, feature checkmarks, and CTA buttons. Can be standalone or embedded.</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">docs-page</div>
+          <div class="skill-mode">prototype</div>
+          <p>3-column documentation layout: sidebar navigation, main content area, right-side table of contents. Optimized for readability.</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">blog-post</div>
+          <div class="skill-mode">prototype</div>
+          <p>Editorial long-form article layout. Reading-optimized typography, author block, related posts, social sharing.</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">mobile-app</div>
+          <div class="skill-mode">prototype</div>
+          <p>Phone-frame single-screen mobile app UI. Fixed 390px canvas, safe areas, bottom navigation bar, mobile interaction patterns.</p>
+        </div>
+      </div>
+
+      <h3>Deck mode (2+ skills)</h3>
+      <div class="skill-grid">
+        <div class="skill-card">
+          <div class="skill-name">guizang-ppt <span class="skill-default">default</span></div>
+          <div class="skill-mode">deck</div>
+          <p>Magazine-style horizontal-swipe web deck. Bundled from op7418/guizang-ppt-skill. WebGL hero, editorial layout, 4 reference files (themes, layouts, components, checklist). The highest-quality deck skill.</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">simple-deck</div>
+          <div class="skill-mode">deck</div>
+          <p>Minimal single-file horizontal-swipe deck. Faster generation, lower complexity. Best for quick presentations that don't need magazine-grade layout.</p>
+        </div>
+      </div>
+
+      <h3>Labs / experimental skills (5 active)</h3>
+      <div class="skill-grid">
+        <div class="skill-card">
+          <div class="skill-name">design-brief</div>
+          <div class="skill-mode">orchestration</div>
+          <p>Prompt choreography system. The interactive discovery question form that pops before any pixel is generated. "30s of radios beats 30min of redirects."</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">critique</div>
+          <div class="skill-mode">quality gate</div>
+          <p>5-dimensional self-critique for every artifact. Scores: Philosophy · Hierarchy · Execution · Specificity · Restraint. Triggers revision if score too low.</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">hyperframes</div>
+          <div class="skill-mode">media</div>
+          <p>Synthetic Matter lab. gpt-image-2 + Seedance + HyperFrames. Image, video, and audio generation from the same chat surface as code.</p>
+        </div>
+        <div class="skill-card">
+          <div class="skill-name">design-system-gen</div>
+          <div class="skill-mode">design system</div>
+          <p>Generates a DESIGN.md from a text brief, screenshot, or reference URL. After run, OD prompts to set as project's active design system.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="skill-types">
+      <div class="eyebrow"><span>06</span> Skill types</div>
+      <h2>Skill types — technical deep dive</h2>
+
+      <h3>prototype-skill</h3>
+      <div class="arch-layer l1">
+        <div class="arch-label">prototype</div>
+        <div class="arch-detail">
+          <strong>Primary output:</strong> <code>index.html</code> or <code>Prototype.jsx</code><br>
+          <strong>Preview:</strong> HTML iframe or JSX with vendored React/Babel<br>
+          <strong>Typical workflow:</strong> clarify brief → resolve design tokens from DESIGN.md → write component tree → write file → run self-check<br>
+          <strong>Export:</strong> HTML, PDF, ZIP
+        </div>
+      </div>
+
+      <h3>deck-skill</h3>
+      <div class="arch-layer l2">
+        <div class="arch-label">deck</div>
+        <div class="arch-detail">
+          <strong>Primary output:</strong> <code>index.html</code> (single-file deck with in-page navigation)<br>
+          <strong>Secondary output:</strong> <code>slides.json</code> (for PPTX export)<br>
+          <strong>Preview:</strong> Full iframe with arrow-key/scrollwheel/touch navigation<br>
+          <strong>Typical workflow:</strong> clarify topic + slide count → pick theme → populate slides from layout catalog → self-check quality rubric<br>
+          <strong>Export:</strong> HTML, PPTX, PDF
+        </div>
+      </div>
+
+      <h3>template-skill</h3>
+      <div class="arch-layer l3">
+        <div class="arch-label">template</div>
+        <div class="arch-detail">
+          <strong>Purpose:</strong> Start from a pre-built artifact. Agent personalizes content, doesn't design from scratch.<br>
+          <strong>Typical workflow:</strong> copy <code>assets/template/</code> to artifact dir → replace content placeholders → optionally tweak tokens to match DESIGN.md<br>
+          <strong>Speed:</strong> 20–40s (no design decisions = much faster)<br>
+          <strong>Quality:</strong> Higher floor than prototype, lower ceiling — the template constrains the output
+        </div>
+      </div>
+
+      <h3>design-system-skill</h3>
+      <div class="arch-layer l4">
+        <div class="arch-label">design-system</div>
+        <div class="arch-detail">
+          <strong>Primary output:</strong> <code>DESIGN.md</code><br>
+          <strong>Preview:</strong> Markdown render with a sample-components preview<br>
+          <strong>Input options:</strong> text brief, screenshot (vision), reference URL<br>
+          <strong>Post-run:</strong> OD prompts user to set this DESIGN.md as the project's active design system — it becomes the visual context for all future generations
+        </div>
+      </div>
+    </section>
+
+    <section id="writing">
+      <div class="eyebrow"><span>07</span> Writing skills</div>
+      <h2>Writing a custom skill — complete guide</h2>
+
+      <h3>Step 1: Create the directory</h3>
+      <pre>mkdir -p ./skills/my-landing/references
+mkdir -p ./skills/my-landing/assets</pre>
+
+      <h3>Step 2: Write SKILL.md</h3>
+      <pre><span class="c">---</span>
+<span class="k">name</span>: my-landing
+<span class="k">description</span>: |
+  Custom landing page skill for B2B SaaS products.
+  Optimized for developer audiences with code examples.
+  Trigger keywords: developer landing, API docs page, B2B SaaS
+
+<span class="k">od</span>:
+  <span class="k">mode</span>: prototype
+  <span class="k">preview</span>:
+    <span class="k">type</span>: html
+    <span class="k">entry</span>: index.html
+  <span class="k">design_system</span>:
+    <span class="k">requires</span>: true
+    <span class="k">sections</span>: [color, typography, components]
+  <span class="k">inputs</span>:
+    - {<span class="k">name</span>: product_name, <span class="k">type</span>: string, <span class="k">required</span>: true}
+    - {<span class="k">name</span>: has_code_example, <span class="k">type</span>: boolean, <span class="k">default</span>: true}
+    - {<span class="k">name</span>: cta_text, <span class="k">type</span>: string, <span class="k">default</span>: <span class="s">"Start for free"</span>}
+<span class="c">---</span>
+
+## Pre-flight (always do this first)
+Read references/checklist.md, references/layouts.md before writing any code.
+
+## Step 1: Clarify brief
+Extract from user prompt: product name, key differentiator, target persona.
+
+## Step 2: Structure
+Follow the hero → social proof → features → code demo → pricing → CTA flow
+from references/layouts.md. Don't invent sections.
+
+## Step 3: Visual tokens
+Use ONLY the colors and fonts from the active DESIGN.md.
+Never add your own colors. Never change font families.
+
+## Step 4: Code example section
+If has_code_example is true, include a syntax-highlighted code block
+showing the simplest possible API call.
+
+## Self-check before emitting artifact
+Run references/checklist.md. All items must pass.
+Score Philosophy, Hierarchy, Execution, Specificity, Restraint.
+Revise if any dimension below 7/10.</pre>
+
+      <h3>Step 3: Write the checklist</h3>
+      <pre><span class="c"># references/checklist.md</span>
+
+## P0 — Must pass before emitting
+- [ ] All colors from DESIGN.md only
+- [ ] All fonts from DESIGN.md only
+- [ ] No placeholder copy — all text is specific to the product
+- [ ] CTA button is visible above the fold
+- [ ] Mobile responsive (tested at 390px)
+
+## P1 — Should pass
+- [ ] Logo placeholder in header
+- [ ] At least 3 feature items
+- [ ] Social proof section present</pre>
+
+      <h3>Step 4: The skill appears automatically</h3>
+      <p>Save the files. The daemon's chokidar watch picks it up — the skill appears in the dropdown immediately in dev mode. No restart needed.</p>
+
+      <div class="callout callout-orange">
+        <strong>Skills with side files:</strong> If your skill has <code>assets/</code> or <code>references/</code> files, they get an automatic "Skill root (absolute)" preamble in the prompt so the agent can resolve paths correctly against the real on-disk location.
+      </div>
+    </section>
+
+    <section id="compatibility">
+      <div class="eyebrow"><span>08</span> Compatibility</div>
+      <h2>Compatibility with Claude Code skills</h2>
+      <p>OD adopts Claude Code's <code>SKILL.md</code> convention verbatim as the base format. This means:</p>
+      <ul class="flist">
+        <li>Any existing Claude Code skill drops into <code>~/.claude/skills/</code> and OD discovers it automatically</li>
+        <li>OD skills without the <code>od:</code> extension block run unchanged in plain Claude Code</li>
+        <li>Community skills from the Claude Code ecosystem work in OD immediately</li>
+        <li>The <code>guizang-ppt-skill</code> from GitHub is bundled verbatim — no modifications, original LICENSE preserved</li>
+      </ul>
+    </section>
+
+    <div class="next-page">
+      <a href="05-design-systems.html" class="next-link">
+        <span class="next-label">Next: Design Systems →</span>
+        <span class="next-sub">9-section DESIGN.md format, all 72 systems, building a brand system</span>
+      </a>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <div class="footer-brand">Open <em>Design</em></div>
+  <div>Apache-2.0 · <a href="https://github.com/nexu-io/open-design">github.com/nexu-io/open-design</a></div>
+</footer>
+</body>
+</html>

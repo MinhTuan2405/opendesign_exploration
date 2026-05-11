@@ -1,0 +1,49 @@
+sequenceDiagram
+    autonumber
+    participant Daemon
+    participant PathScanner as Path Scanner
+    participant AgentDef as AgentDef[0..15]
+    participant ChildProcess
+    participant AgentCache as Agent Cache (liveModelCache)
+
+    Daemon->>Daemon: startServer() → detectAgents(configuredEnvByAgent)
+
+    rect rgb(230, 240, 255)
+        Note over Daemon,AgentDef: Parallel probe loop across all 16 AGENT_DEFs
+        loop for each AGENT_DEF (parallel)
+            Daemon->>PathScanner: resolveAgentExecutable(def, configuredEnv)
+            Note over PathScanner: checks AGENT_BIN_ENV_KEYS first, then PATH
+            alt executable not found
+                PathScanner-->>Daemon: available: false
+            else executable found
+                PathScanner-->>Daemon: binPath
+
+                Daemon->>ChildProcess: spawn(bin, versionArgs, { timeout:10s })
+                ChildProcess-->>Daemon: version string (e.g. 'claude 1.x.x')
+
+                Daemon->>ChildProcess: spawn(bin, helpArgs, { timeout:10s })
+                ChildProcess-->>Daemon: help text
+
+                Daemon->>Daemon: parse help text → capabilityFlags
+                Note over Daemon: flags: --add-dir, --include-partial-messages,<br/>--no-cache, etc.
+
+                alt agent has listModels or detectAcpModels
+                    Daemon->>ChildProcess: spawn(bin, modelListArgs, { timeout:15s })
+                    ChildProcess-->>Daemon: model list JSON
+                    Daemon->>AgentCache: cache models per agent
+                end
+
+                PathScanner-->>Daemon: { id, bin, version, models, available:true, capabilities }
+            end
+        end
+    end
+
+    Daemon->>Daemon: builds available agents array
+
+    rect rgb(230, 255, 230)
+        Note over Daemon: Results available to Web UI
+        Daemon->>Daemon: registers GET /api/agents handler
+        Note over Daemon: Web: GET /api/agents → agent picker populated
+    end
+
+    Note over Daemon: On SIGHUP: detectAgents() re-runs (live agent swap without restart)

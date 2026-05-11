@@ -1,0 +1,69 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant WebUI
+    participant Daemon
+    participant SkillLoader
+    participant PromptComposer
+    participant AgentCLI
+    participant FileSystem
+    participant ArtifactParser
+    participant PreviewIframe
+    participant SQLite
+    participant LintChecker
+
+    User->>WebUI: Submit prompt (skill selected, design system selected)
+    WebUI->>Daemon: POST /api/chat { projectId, conversationId, prompt, agentId, model, skillId, designSystemId }
+    Daemon->>SQLite: Upsert conversation + create assistant message row (status = queued)
+    Daemon->>SkillLoader: findSkillById(skillId) → read SKILL.md frontmatter + body
+    Note over SkillLoader: apps/daemon/src/skills.ts<br/>Resolves SKILL_ID_ALIASES before scanning.<br/>Returns { id, mode, craftRequires, body, hasAttachments, … }
+    SkillLoader-->>Daemon: skill { body, mode, craftRequires, folderPath }
+    Daemon->>FileSystem: stageActiveSkill(cwd, folderName) → copy skill folder to .od/projects/<id>/.od-skills/<name>/
+    Note over FileSystem: apps/daemon/src/cwd-aliases.ts<br/>Per-project copy (not symlink) to prevent<br/>write-amplification via agent tool calls.
+    FileSystem-->>Daemon: stagingResult { staged: true, stagedPath }
+    Daemon->>FileSystem: Read design-systems/<name>/DESIGN.md body
+    FileSystem-->>Daemon: designSystemBody (9-section brand token Markdown)
+    Daemon->>PromptComposer: composeSystemPrompt({ agentId, skillBody, skillMode, designSystemBody, craftRequires, metadata, … })
+    Note over PromptComposer: apps/daemon/src/prompts/system.ts<br/>Layer 1: OFFICIAL_DESIGNER_PROMPT (identity charter)<br/>Layer 2: DISCOVERY_AND_PHILOSOPHY (question form, directions)<br/>Layer 3: designSystemBody (palette, typography, spacing)<br/>Layer 4: skillBody (workflow, pre-flight rules)<br/>+Deck framework directive (deck-mode only)<br/>+Media contract (image/video/audio skills)<br/>+Craft sections from od.craft.requires slugs
+    PromptComposer->>FileSystem: loadCraftSections(craftRequires) [if skill opts in]
+    FileSystem-->>PromptComposer: craft reference sections (e.g. anti-ai-slop content)
+    PromptComposer-->>Daemon: composedSystemPrompt (single string)
+    Daemon->>Daemon: derivePreflight(skill) → inject hard-read rules above skill body
+    Note over Daemon: Preflight tells agent: read template.html FIRST,<br/>then references/checklist.md, BEFORE writing any code.<br/>Only injected when skill ships assets/template.html.
+    Daemon->>Daemon: buildArgs(prompt, imagePaths, extraAllowedDirs, options, runtimeContext)
+    Note over Daemon: apps/daemon/src/agents.ts<br/>Constructs CLI argv per agent:<br/>• claude: -p --output-format stream-json --include-partial-messages --add-dir .od-skills/ --permission-mode bypassPermissions<br/>• codex: exec --json --sandbox workspace-write ...<br/>• gemini: --output-format stream-json --yolo<br/>• ACP agents: --permission-mode dangerous --respect-workspace-trust false acp<br/>• pi: custom JSON-RPC flags<br/>Prompt delivered via stdin for most agents (promptViaStdin: true) to avoid ENAMETOOLONG on Windows.
+    Daemon->>Daemon: createRun(meta) in SSE run registry
+    Note over Daemon: apps/daemon/src/runs.ts<br/>In-memory map keyed by UUID.<br/>Buffers up to 2000 events, 30-min TTL after terminal status.
+    WebUI->>Daemon: GET /api/chat/run/:runId/stream (EventSource, SSE)
+    Daemon-->>WebUI: SSE connection established (200 text/event-stream)
+    Daemon->>AgentCLI: child_process.spawn(cliPath, args, { cwd: .od/projects/<id>/ })
+    Note over Daemon,AgentCLI: stdin: composed systemPrompt + user prompt (piped for most agents)<br/>env: spawnEnvForAgent() + per-agent env vars (e.g. GEMINI_CLI_TRUST_WORKSPACE=true)<br/>Non-interactive / auto-approve mode enforced — no TTY.
+    AgentCLI->>FileSystem: Read .od-skills/<name>/assets/template.html (via Read tool)
+    Note over AgentCLI,FileSystem: Pre-flight instruction requires this before any code generation.<br/>[Uncertain: exact tool call syntax varies by agent CLI]
+    AgentCLI->>FileSystem: Read .od-skills/<name>/references/checklist.md (via Read tool)
+    Note over AgentCLI,FileSystem: [Uncertain: not all skills include references/]
+    AgentCLI->>AgentCLI: Generate artifact HTML (applying skill + design system + brand tokens)
+    AgentCLI->>FileSystem: Write artifact HTML to .od/projects/<id>/<filename>.html
+    AgentCLI-->>Daemon: stdout: line-delimited JSON (or ACP JSON-RPC / plain text)
+    Note over Daemon: Stream format selected at spawn time per agent:<br/>• claude-stream-json → claude-stream.ts<br/>• qoder-stream-json → qoder-stream.ts<br/>• json-event-stream → json-event-stream.ts (codex/gemini/opencode/cursor)<br/>• acp-json-rpc → acp.ts (devin/hermes/kimi/kiro/kilo/vibe)<br/>• pi-rpc → pi-rpc.ts<br/>• plain → raw text forwarded chunk-by-chunk
+    Daemon->>Daemon: StreamParser: parse stdout → typed AgentEvents (text/thinking/tool_use/tool_result/status)
+    Daemon->>Daemon: runRegistry.emit(run, eventType, data)
+    Daemon-->>WebUI: SSE: delta events (agent:text, agent:thinking, agent:tool_use, agent:status, …)
+    WebUI->>ArtifactParser: feed(delta)
+    Note over ArtifactParser: apps/web/src/artifacts/parser.ts<br/>Scans stream for <artifact identifier="…" type="…" title="…"> tags.<br/>Emits: artifact:start, artifact:chunk, artifact:end (with fullContent).
+    ArtifactParser-->>WebUI: artifact:end { identifier, fullContent }
+    WebUI->>LintChecker: POST /api/artifacts/save (artifact body)
+    Note over LintChecker: apps/daemon/src/lint-artifact.ts<br/>Grep-style checks, no HTML parsing.<br/>P0: purple/indigo/blue-cyan gradients, slop emoji (✨🚀🎯⚡🔥💡📈🎨🛡️🌟), invented metrics, lorem filler.<br/>P1/P2: advisory badges in UI.<br/>Does NOT throw on findings — returns structured findings array.
+    LintChecker-->>Daemon: findings [{ severity, id, message, fix, snippet }, …]
+    Daemon-->>WebUI: SSE: lint findings (P0 findings fed back as agent system message on next turn)
+    WebUI->>PreviewIframe: Set srcdoc = artifact fullContent
+    PreviewIframe-->>User: Rendered HTML preview (sandboxed iframe)
+    Daemon->>SQLite: UPDATE messages SET content=…, produced_files_json=…, run_status='succeeded', ended_at=… WHERE id=assistantMessageId
+    Note over Daemon,SQLite: tables: messages (artifact ref, events_json, run_status)<br/>projects (updated_at)<br/>conversations (updated_at)
+
+    Note over Daemon,AgentCLI: ERROR PATH: agent exits non-zero or emits to stderr
+    AgentCLI--xDaemon: stderr text OR non-zero exit code
+    Note over Daemon: Daemon captures stderr via 'data' event on child.stderr.<br/>Emits SSE error event to WebUI.<br/>[Uncertain: exact SSE event shape for stderr errors]
+    Daemon-->>WebUI: SSE: { event: 'error', data: { message, exitCode } }
+    WebUI-->>User: Error state displayed in chat pane
+    Daemon->>SQLite: UPDATE messages SET run_status='failed', ended_at=… WHERE id=assistantMessageId

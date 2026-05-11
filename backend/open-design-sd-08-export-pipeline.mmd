@@ -1,0 +1,50 @@
+sequenceDiagram
+    autonumber
+    participant User
+    participant Browser as Browser (WebUI)
+    participant Daemon
+    participant FileSystem
+    participant ExportHandler
+
+    User->>Browser: clicks Export (selects format)
+    Browser->>Daemon: POST /api/projects/:id/files/:filename/export?format=<fmt>
+
+    Daemon->>FileSystem: read artifact from .od/projects/<id>/<filename>
+    FileSystem-->>Daemon: raw HTML content
+
+    Daemon->>ExportHandler: dispatch on format
+
+    rect rgb(230, 240, 255)
+        Note over ExportHandler: format = html
+        ExportHandler->>ExportHandler: scan for external CSS/JS/image references
+        ExportHandler->>ExportHandler: base64-encode external assets → inline data URIs
+        ExportHandler-->>Daemon: complete self-contained HTML string
+    end
+
+    rect rgb(230, 255, 230)
+        Note over ExportHandler: format = pdf
+        Note over ExportHandler: [Uncertain] browser triggers window.print()<br/>or headless Puppeteer render
+        ExportHandler-->>Daemon: PDF buffer
+    end
+
+    rect rgb(255, 245, 220)
+        Note over ExportHandler: format = pptx (deck mode)
+        Note over ExportHandler: [Uncertain] JSON slide definitions → pptxgenjs → .pptx buffer
+        ExportHandler-->>Daemon: PPTX buffer
+    end
+
+    rect rgb(255, 230, 230)
+        Note over ExportHandler: format = zip
+        ExportHandler->>FileSystem: list visible project files (respects MIME allowlist)
+        ExportHandler->>ExportHandler: archiver → zip entries
+        ExportHandler-->>Daemon: ZIP buffer
+    end
+
+    rect rgb(240, 230, 255)
+        Note over ExportHandler: format = markdown
+        ExportHandler->>ExportHandler: direct copy or skill-defined render
+        ExportHandler-->>Daemon: Markdown string
+    end
+
+    Daemon->>Browser: HTTP 200 { Content-Disposition: attachment; filename=<name>.<ext>, body: buffer }
+    Browser->>Browser: triggers native file download dialog

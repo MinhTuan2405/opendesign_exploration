@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Introduction — Open Design Docs</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="index.html">Open <em>Design</em></a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="01-introduction.html" class="active">Introduction</a>
+    <a href="02-architecture.html">Architecture</a>
+    <a href="03-workflow.html">Workflow</a>
+    <a href="04-skills.html">Skills</a>
+    <a href="05-design-systems.html">Design Systems</a>
+    <a href="06-reference.html">Reference</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="crumb"><a href="index.html">Docs</a> / Introduction</div>
+    <h1>Introduction &amp; <em>Concepts</em></h1>
+    <p>What Open Design is, why it exists, the core mental model, and how it fits into the AI-assisted design landscape.</p>
+  </div>
+</div>
+
+<div class="doc-layout">
+  <aside class="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-title">On this page</div>
+      <a href="#what">What is it?</a>
+      <a href="#why">Why it exists</a>
+      <a href="#mental-model">Mental model</a>
+      <a href="#vs">vs. Claude Design</a>
+      <a href="#origins">Open-source origins</a>
+      <a href="#who">Who is it for?</a>
+      <a href="#not">What it is NOT</a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-title">Navigation</div>
+      <a href="02-architecture.html">→ Architecture</a>
+      <a href="03-workflow.html">→ Workflow</a>
+    </div>
+  </aside>
+
+  <main>
+
+    <section id="what">
+      <div class="eyebrow"><span>01</span> What is it?</div>
+      <h2>Open Design in one sentence</h2>
+      <p>Open Design (OD) is an <strong>open-source, local-first design studio</strong> that turns your existing coding agent — Claude Code, Codex, Cursor, Gemini CLI, OpenCode, Qwen — into a full-stack design engine driven by composable skills and brand-grade design systems.</p>
+
+      <div class="callout callout-orange">
+        <strong>The core idea:</strong> OD doesn't ship its own AI model. The strongest coding agents already live on your laptop. OD wires them into a skill-driven design workflow — adding structure, taste, and a deterministic output contract — so they produce design artifacts instead of generic code.
+      </div>
+
+      <p>The result is a platform where typing <em>"make me a magazine-style pitch deck for our seed round"</em> produces a real, shippable HTML artifact with editorial-grade layout, a curated palette, live preview in a sandboxed iframe, and a self-critique gate — not a rough prototype that needs extensive cleanup.</p>
+
+      <div class="stat-row">
+        <div class="stat-box"><span class="stat-n">31</span><span class="stat-l">Composable skills</span></div>
+        <div class="stat-box"><span class="stat-n">72</span><span class="stat-l">Design systems</span></div>
+        <div class="stat-box"><span class="stat-n">12</span><span class="stat-l">Agent adapters</span></div>
+        <div class="stat-box"><span class="stat-n">v0.3</span><span class="stat-l">Current version</span></div>
+      </div>
+    </section>
+
+    <section id="why">
+      <div class="eyebrow"><span>02</span> Why it exists</div>
+      <h2>The origin story</h2>
+      <p>Anthropic released <strong>Claude Design</strong> on April 17, 2026 (with Opus 4.7), showing what happens when an LLM stops writing prose and starts shipping design artifacts. It went viral immediately — and stayed <strong>closed-source, paid-only, cloud-only, locked to Anthropic's model and skills</strong>.</p>
+      <p>There was no checkout, no self-host, no Vercel deploy, no swap-in-your-own-agent. Zero portability.</p>
+      <div class="callout callout-blue">
+        <strong>Open Design is the direct answer:</strong> same artifact-first mental model, same loop, none of the lock-in. Apache-2.0. Self-host anywhere. Use any agent. Bring your own key at every layer.
+      </div>
+
+      <h3>The thesis</h3>
+      <p>The code agent space has already converged on a few strong implementations (Claude Code, Codex, Cursor Agent, Gemini CLI, OpenCode, Qwen). Reimplementing another one is worse than talking to all of them. OD's job is to detect the agent, feed it a skill + prompt + working directory, and stream its output back to the web UI.</p>
+    </section>
+
+    <section id="mental-model">
+      <div class="eyebrow"><span>03</span> Mental model</div>
+      <h2>The composable stack</h2>
+      <p>Every generation in Open Design is the product of three things composing together:</p>
+
+      <div class="compose-stack">
+        <div class="compose-row skill">
+          <div class="compose-label">SKILL.md</div>
+          <div class="compose-content">
+            <strong>The workflow</strong> — what to build, how to build it, what checklist to run, what reference files to read first. Defines the <em>design surface</em> (prototype, deck, dashboard, landing page).
+          </div>
+        </div>
+        <div class="compose-plus">+</div>
+        <div class="compose-row system">
+          <div class="compose-label">DESIGN.md</div>
+          <div class="compose-content">
+            <strong>The visual identity</strong> — 9-section brand document: palette in OKLch, font stack, spacing scale, component patterns, motion, voice. Defines the <em>aesthetic language</em>.
+          </div>
+        </div>
+        <div class="compose-plus">+</div>
+        <div class="compose-row agent">
+          <div class="compose-label">Agent CLI</div>
+          <div class="compose-content">
+            <strong>The execution engine</strong> — your existing coding agent on <code>$PATH</code>. Receives the composed prompt, writes files to disk, streams output back to the preview iframe.
+          </div>
+        </div>
+        <div class="compose-eq">=</div>
+        <div class="compose-row artifact">
+          <div class="compose-label">Artifact</div>
+          <div class="compose-content">
+            <strong>A real shippable file</strong> — plain HTML/CSS/JS in <code>./.od/artifacts/&lt;slug&gt;/</code>. Open in browser, commit to git, deploy to CDN, export as PDF or PPTX.
+          </div>
+        </div>
+      </div>
+
+      <p>The pairing is what gives OD its power: <code>saas-landing</code> + <code>Linear</code> system produces a landing page in Linear's visual language. The same skill + <code>Stripe</code> system produces the same structure in Stripe's aesthetic. Swap one dimension, the other holds constant.</p>
+    </section>
+
+    <section id="vs">
+      <div class="eyebrow"><span>04</span> Comparison</div>
+      <h2>Open Design vs. Claude Design</h2>
+      <table>
+        <thead><tr><th>Dimension</th><th>Claude Design (Anthropic)</th><th>Open Design</th></tr></thead>
+        <tbody>
+          <tr><td>License</td><td>Proprietary / paid</td><td>Apache-2.0 — free forever</td></tr>
+          <tr><td>Hosting</td><td>Cloud-only</td><td>Local, Vercel, or self-hosted</td></tr>
+          <tr><td>AI model</td><td>Anthropic only (Opus 4.7)</td><td>Any: Claude, Codex, Gemini, Cursor, OpenCode, Qwen…</td></tr>
+          <tr><td>API keys</td><td>Managed by Anthropic</td><td>BYOK — your own key at every layer</td></tr>
+          <tr><td>Skills</td><td>Closed, not extensible</td><td>31 open skills + write your own in minutes</td></tr>
+          <tr><td>Design systems</td><td>Internal, not portable</td><td>72 portable DESIGN.md files + custom</td></tr>
+          <tr><td>Artifacts</td><td>Cloud storage, opaque</td><td>Plain files on disk — git-committable</td></tr>
+          <tr><td>Customization</td><td>None</td><td>Every layer is a file you can edit</td></tr>
+          <tr><td>Source code</td><td>Closed</td><td>Fully open — fork it, extend it</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="origins">
+      <div class="eyebrow"><span>05</span> Open-source origins</div>
+      <h2>Standing on open-source shoulders</h2>
+      <p>Open Design is built on four open-source foundations, each contributing a distinct capability:</p>
+      <div class="origins-grid">
+        <div class="origin-card">
+          <div class="origin-repo">alchaincyf/huashu-design</div>
+          <p>The design-philosophy compass. Contributes: Junior-Designer workflow, 5-step brand-asset protocol, anti-AI-slop checklist, 5-dimensional self-critique, and the "5 schools × 20 design philosophies" idea behind the direction picker. Distilled into <code>src/prompts/discovery.ts</code>.</p>
+        </div>
+        <div class="origin-card">
+          <div class="origin-repo">op7418/guizang-ppt-skill</div>
+          <p>The deck mode. Bundled verbatim under <code>skills/guizang-ppt/</code> with original LICENSE preserved. Magazine-style layouts, WebGL hero, P0 self-check. The reference implementation for all deck skills.</p>
+        </div>
+        <div class="origin-card">
+          <div class="origin-repo">multica-ai/multica</div>
+          <p>Agent detection pattern — PATH-scanning for multiple CLI tools and maintaining an adapter pool. The inspiration for OD's multi-agent adapter system.</p>
+        </div>
+        <div class="origin-card">
+          <div class="origin-repo">OpenCoworkAI/open-codesign</div>
+          <p>The UX layer. Sandboxed iframe preview with vendored React 18 + Babel, the comment-mode interaction pattern, and the codesign methodology for human-agent collaboration.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="who">
+      <div class="eyebrow"><span>06</span> Audience</div>
+      <h2>Who is Open Design for?</h2>
+      <div class="who-grid">
+        <div class="who-card">
+          <div class="who-title">🖥️ Developers who design</div>
+          <p>Already have Claude Code or Codex. Want design-quality output from their existing agent — no new tools, no new accounts. Just wire in the skill layer and get design artifacts instead of generic code.</p>
+        </div>
+        <div class="who-card">
+          <div class="who-title">✏️ Designers who code</div>
+          <p>Want to produce shippable HTML artifacts, not static Figma mockups. OD handles code quality; the designer guides the aesthetic via DESIGN.md, direction picker, and comment mode.</p>
+        </div>
+        <div class="who-card">
+          <div class="who-title">🏢 Teams needing consistency</div>
+          <p>Commit a DESIGN.md and shared <code>skills/</code> folder to the repo. Every team member's generations follow the same brand system automatically. Review designs in pull requests.</p>
+        </div>
+        <div class="who-card">
+          <div class="who-title">🔓 Escaping vendor lock-in</div>
+          <p>Same artifact-first mental model as Claude Design, self-hosted. Swap models, self-host on Vercel, run fully local. Apache-2.0 — use commercially, fork freely.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="not">
+      <div class="eyebrow"><span>07</span> Scope</div>
+      <h2>What Open Design is NOT</h2>
+      <div class="not-list">
+        <div class="not-item">
+          <span class="not-x">✗</span>
+          <div><strong>Not a design tool like Figma</strong> — artifacts are shippable HTML/CSS/JS files, not vector design files. There's no canvas, no component library, no inspection panel.</div>
+        </div>
+        <div class="not-item">
+          <span class="not-x">✗</span>
+          <div><strong>Not a no-code website builder</strong> — you own the code and need to understand it. The output is code, not a drag-and-drop site.</div>
+        </div>
+        <div class="not-item">
+          <span class="not-x">✗</span>
+          <div><strong>Not a hosted SaaS</strong> — it runs locally (Topology A) or self-hosted on Vercel (Topology B/C). No managed hosting, no usage metering.</div>
+        </div>
+        <div class="not-item">
+          <span class="not-x">✗</span>
+          <div><strong>Not a replacement for taste</strong> — it amplifies taste. You still need to pick the right design system, write a good brief, and use comment mode to guide the refinement.</div>
+        </div>
+        <div class="not-item">
+          <span class="not-x">✗</span>
+          <div><strong>Not a new AI model</strong> — it uses your existing agent. The intelligence is provided by Claude Code, Codex, or whichever agent you have installed.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="next-page">
+      <a href="02-architecture.html" class="next-link">
+        <span class="next-label">Next: Architecture &amp; Internals →</span>
+        <span class="next-sub">System topology, daemon, prompt stack, agent adapters</span>
+      </a>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <div class="footer-brand">Open <em>Design</em></div>
+  <div>Apache-2.0 · <a href="https://github.com/nexu-io/open-design">github.com/nexu-io/open-design</a></div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,101 @@
+flowchart TD
+    %% ── WRITES ───────────────────────────────────────────────
+    subgraph Writes ["📝 Write Paths"]
+        direction TB
+        W1["Daemon: upsertMessage()\nnew chat message persisted"]
+        W2["Daemon: insertProject() / updateProject()\nproject metadata + skill/DS selection"]
+        W3["Daemon: setTabs()\nactive tab state"]
+        W4["Daemon: upsertDeployment()\ndeploy record"]
+        W5["Daemon: insertTemplate()\nsave-as-template"]
+        W6["Daemon: upsertPreviewComment()\ncanvas annotation"]
+        W7["Agent CLI: writes output.html\n(direct fs write to project cwd)"]
+        W8["Daemon: stageActiveSkill()\nskill copy to .od-skills/<id>/"]
+        W9["Daemon: PUT /api/media/config\nAPI keys stored encrypted-at-rest"]
+    end
+
+    %% ── SQLITE ───────────────────────────────────────────────
+    subgraph DB ["💾 SQLite  ·  .od/app.sqlite  ·  WAL mode, FK ON"]
+        direction TB
+        T1["projects\nid · name · skill_id · design_system_id\npending_prompt · metadata_json\ncreated_at · updated_at"]
+        T2["conversations\nid · project_id (FK) · title\ncreated_at · updated_at\nIDX: (project_id, updated_at DESC)"]
+        T3["messages\nid · conversation_id (FK) · role · content\nagent_id · agent_name · run_id · run_status\nevents_json · attachments_json\nproduced_files_json · position\nstarted_at · ended_at · created_at\nIDX: (conversation_id, position)"]
+        T4["templates\nid · name · description\nsource_project_id · files_json · created_at"]
+        T5["deployments\nid · project_id (FK) · file_name\nprovider_id · url · deployment_id\ndeployment_count · target · status\nprovider_metadata_json\nUNIQUE: (project_id, file_name, provider_id)"]
+        T6["tabs\nproject_id (PK) · name (PK)\nposition · is_active"]
+        T7["preview_comments\nid · project_id (FK) · conversation_id (FK)\nfile_path · element_id · selector · label · text\nposition_json · html_hint · status\nstatuses: open→attached→applying\n→needs_review→resolved→failed\nUNIQUE: (project_id, conversation_id, file_path, element_id)"]
+    end
+
+    %% ── FILESYSTEM ───────────────────────────────────────────
+    subgraph FS ["📁 File System  ·  .od/"]
+        direction TB
+        F1[".od/app.sqlite\nSQLite database"]
+        F2[".od/projects/<id>/\nAgent CWD\nartifact HTML files\n*.artifact.json sidecars"]
+        F3[".od/projects/<id>/.od-skills/<skillId>/\nStaged skill copy\n(not a symlink — prevents escape)"]
+        F4[".od/artifacts/<id>/\nSaved renders + artifact.json manifest\nhistory.jsonl append-only log"]
+        F5[".od/media-config.json\nAPI keys — gitignored\nnever in SQLite"]
+        F6[".od/app-config.json\nUser preferences\nonboarding · agent · skill · DS selection"]
+    end
+
+    %% ── IN-MEMORY ────────────────────────────────────────────
+    subgraph Mem ["⚡ In-Memory  ·  daemon process lifetime"]
+        direction TB
+        M1["Run Registry\ncreateChatRunService()\nTTL: 30 min after terminal\nmax 2000 events buffered"]
+        M2["liveModelCache\nper-agent model list\nrefreshed on detectAgents()"]
+        M3["agentCapabilities\ncapability flags from --help probe"]
+        M4["activeContext\nGET/POST /api/active\nTTL: 5 min\nused by MCP server fallback"]
+    end
+
+    %% ── READS ────────────────────────────────────────────────
+    subgraph Reads ["📖 Read Paths"]
+        direction LR
+        R1["GET /api/projects\n→ listProjects(db)"]
+        R2["GET /api/projects/:id/files\n→ listFiles() from .od/projects/<id>/"]
+        R3["GET /api/skills\n→ listSkills(SKILLS_DIR)"]
+        R4["GET /api/design-systems\n→ listDesignSystems(DS_DIR)"]
+        R5["GET /api/agents\n→ detectAgents() cache"]
+        R6["MCP: get_artifact / get_file\n→ .od/projects/<id>/\nread-only, soft 1.5 MB cap"]
+    end
+
+    %% ── ENV OVERRIDES ─────────────────────────────────────────
+    subgraph Env ["🔧 Storage Path Overrides"]
+        direction LR
+        E1["OD_DATA_DIR\nrelocates ALL runtime data\n.od/ → &lt;dir&gt;/"]
+        E2["OD_MEDIA_CONFIG_DIR\nrelocates media-config.json only\n(for separate credential store)"]
+    end
+
+    %% ── EDGES ────────────────────────────────────────────────
+    W1 --> T3
+    W2 --> T1
+    W3 --> T6
+    W4 --> T5
+    W5 --> T4
+    W6 --> T7
+    W7 --> F2
+    W8 --> F3
+    W9 --> F5
+
+    T1 & T2 & T3 & T4 & T5 & T6 & T7 --> F1
+
+    R1 --> T1
+    R2 --> F2
+    R3 -.->|"scans dir"| F2
+    R4 -.->|"scans dir"| F2
+    R5 --> M2
+    R6 --> F2
+
+    Env --> FS
+
+    %% ── STYLES ────────────────────────────────────────────────
+    classDef write fill:#faece7,stroke:#c96442,color:#1a1916,font-size:11px
+    classDef table fill:#e6f1fb,stroke:#185fa5,color:#1a1916,font-size:11px
+    classDef file fill:#f3f0e8,stroke:#706d65,color:#1a1916,font-size:11px
+    classDef mem fill:#faeeda,stroke:#854f0b,color:#1a1916,font-size:11px
+    classDef read fill:#e8f5e9,stroke:#2e7d32,color:#1a1916,font-size:11px
+    classDef env fill:#f0f0f0,stroke:#999,color:#1a1916,font-size:11px
+
+    class W1,W2,W3,W4,W5,W6,W7,W8,W9 write
+    class T1,T2,T3,T4,T5,T6,T7 table
+    class F1,F2,F3,F4,F5,F6 file
+    class M1,M2,M3,M4 mem
+    class R1,R2,R3,R4,R5,R6 read
+    class E1,E2 env

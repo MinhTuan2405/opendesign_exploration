@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Systems — Open Design Docs</title>
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="index.html">Open <em>Design</em></a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="01-introduction.html">Introduction</a>
+    <a href="02-architecture.html">Architecture</a>
+    <a href="03-workflow.html">Workflow</a>
+    <a href="04-skills.html">Skills</a>
+    <a href="05-design-systems.html" class="active">Design Systems</a>
+    <a href="06-reference.html">Reference</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="crumb"><a href="index.html">Docs</a> / Design Systems</div>
+    <h1>Design <em>Systems</em></h1>
+    <p>The 9-section DESIGN.md format, the 72 portable brand-grade systems, how the resolver works, token pruning, and building a system from scratch.</p>
+  </div>
+</div>
+
+<div class="doc-layout">
+  <aside class="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-title">On this page</div>
+      <a href="#what">What is a design system?</a>
+      <a href="#format">9-section format</a>
+      <a href="#resolver">How the resolver works</a>
+      <a href="#injection">Injection & token pruning</a>
+      <a href="#catalog">72 built-in systems</a>
+      <a href="#writing">Writing a custom DESIGN.md</a>
+      <a href="#from-url">System from URL / screenshot</a>
+    </div>
+  </aside>
+
+  <main>
+
+    <section id="what">
+      <div class="eyebrow"><span>01</span> Concept</div>
+      <h2>What is a design system in OD?</h2>
+      <p>In Open Design, a <strong>design system</strong> is a portable <code>DESIGN.md</code> file following a 9-section schema. It encodes a brand's complete visual identity — palette, typography, spacing, components, motion, voice — in a format that can be injected into the agent's system prompt before every generation.</p>
+      <p>The design system is the answer to: <em>"what should this look like?"</em> The skill is the answer to: <em>"how should we build it?"</em> Together they produce a generation that is both correctly structured and visually coherent.</p>
+
+      <div class="callout callout-orange">
+        <strong>The pairing effect:</strong> <code>dashboard</code> skill + <code>Linear</code> system = a dashboard in Linear's visual language. The same skill + <code>Stripe</code> = the same structure in Stripe's design language. Swap one dimension; everything else holds constant.
+      </div>
+    </section>
+
+    <section id="format">
+      <div class="eyebrow"><span>02</span> Format</div>
+      <h2>The 9-section DESIGN.md format</h2>
+      <p>Every design system follows this 9-section schema (from the <code>awesome-claude-design</code> spec). Skills can request only specific sections via <code>od.design_system.sections</code> to save tokens.</p>
+
+      <table>
+        <thead><tr><th>#</th><th>Section</th><th>Key contents</th><th>Most used by</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>Identity</strong></td><td>Brand name, tagline, positioning, voice personality</td><td>All skills</td></tr>
+          <tr><td>2</td><td><strong>Color</strong></td><td>Primary, secondary, surface, semantic tokens in OKLch + hex; dark mode variants</td><td>All skills</td></tr>
+          <tr><td>3</td><td><strong>Typography</strong></td><td>Font stack, scale (rem), weight ramp, line-height, letter-spacing, heading rules</td><td>All skills</td></tr>
+          <tr><td>4</td><td><strong>Spacing</strong></td><td>Base unit, spacing scale, layout grid, content max-width, column count</td><td>Prototype, dashboard</td></tr>
+          <tr><td>5</td><td><strong>Components</strong></td><td>Button variants, input styles, card patterns, badge, navigation, modal specs</td><td>Prototype, dashboard</td></tr>
+          <tr><td>6</td><td><strong>Iconography</strong></td><td>Icon set name, style (outline/filled), sizing convention, common names</td><td>Dashboard, docs</td></tr>
+          <tr><td>7</td><td><strong>Imagery</strong></td><td>Photography style, illustration guidelines, usage rules, asset sources</td><td>Landing page, deck</td></tr>
+          <tr><td>8</td><td><strong>Motion</strong></td><td>Easing curves (cubic-bezier), duration scale, interaction patterns, reduced-motion handling</td><td>Prototype</td></tr>
+          <tr><td>9</td><td><strong>Voice &amp; Tone</strong></td><td>Writing style, formality level, tone guidelines, example copy, anti-patterns</td><td>Landing page, blog</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Example DESIGN.md structure</h3>
+      <pre><span class="c"># Acme Corp Design System</span>
+<span class="c">## Brand: Acme Corp · "Move fast, stay beautiful"</span>
+
+<span class="k">## 1. Identity</span>
+Product: Developer infrastructure for API teams.
+Voice: Direct, precise, never corporate. Write like a senior engineer who can also design.
+Positioning: Fast, reliable, beautiful. In that order.
+
+<span class="k">## 2. Color</span>
+Primary:   oklch(55% 0.22 250)  <span class="c"># #1a5fd4 — electric blue</span>
+Accent:    oklch(68% 0.20 30)   <span class="c"># #e8763c — warm orange</span>
+Surface:   oklch(98% 0.01 250)  <span class="c"># #f8f9fe — near-white</span>
+Text:      oklch(15% 0.02 250)  <span class="c"># #111827 — near-black</span>
+Danger:    oklch(55% 0.22 25)   <span class="c"># #d14040</span>
+Success:   oklch(50% 0.18 145)  <span class="c"># #2a7a3a</span>
+
+Dark mode:
+Surface-dark: oklch(12% 0.02 250)
+Text-dark:    oklch(90% 0.01 250)
+
+<span class="k">## 3. Typography</span>
+Display: "Cal Sans" 700 · scale: 4rem / 3rem / 2rem
+Heading: "Inter" 600
+Body:    "Inter" 400 · 1rem / 1.75 line-height
+Mono:    "JetBrains Mono" 400 · 0.875rem
+
+<span class="k">## 4. Spacing</span>
+Base unit: 8px · Scale: 4/8/12/16/24/32/48/64/96/128px
+Container max-width: 1200px · Content: 720px
+Grid: 12 columns · Gap: 24px
+
+<span class="k">## 5. Components</span>
+Button/primary: primary color · 36px tall · 12px radius · 500 weight · uppercase 12px
+Button/ghost:   transparent · 1px border primary · same dims
+Card:           white · 1px border #e5e7eb · 24px padding · 12px radius · no shadow
+Input:          36px · 4px radius · 1px border #d1d5db · focus: 2px primary ring
+
+<span class="k">## 6. Iconography</span>
+Library: Heroicons (outline variant only) · 20px default · 24px for navigation
+
+<span class="k">## 7. Imagery</span>
+Photography: dark, moody, technical environments. No stock-photo smiles.
+Illustrations: geometric, minimal, monochrome. SVG only.
+
+<span class="k">## 8. Motion</span>
+Easing: cubic-bezier(0.4, 0, 0.2, 1) (material standard)
+Duration: 150ms micro · 250ms standard · 400ms complex
+Rule: animate transform and opacity only. No layout animations.
+
+<span class="k">## 9. Voice</span>
+Do: "Start building in 5 minutes." "Zero config." "Works with your stack."
+Don't: "Empower your team to leverage." "Best-in-class." "Industry-leading."
+Headlines: Fragment sentences OK. Active verbs. Numbers when possible.</pre>
+    </section>
+
+    <section id="resolver">
+      <div class="eyebrow"><span>03</span> Resolver</div>
+      <h2>How the design-system resolver works</h2>
+      <p>The daemon's design-system resolver loads a DESIGN.md on boot and hot-reloads it in dev. It looks in these locations in order:</p>
+
+      <div class="arch-layer l1">
+        <div class="arch-label">1st<div class="badge">Highest</div></div>
+        <div class="arch-detail"><code>./DESIGN.md</code> — project root. This is where you put your brand system. Overrides everything.</div>
+      </div>
+      <div class="arch-layer l2">
+        <div class="arch-label">2nd</div>
+        <div class="arch-detail"><code>./design-system/DESIGN.md</code> — project subdirectory. Alternative location if you prefer a dedicated folder.</div>
+      </div>
+      <div class="arch-layer l3">
+        <div class="arch-label">3rd</div>
+        <div class="arch-detail">User-configured path in <code>./.od/config.json</code> — point to any absolute path on disk.</div>
+      </div>
+      <div class="arch-layer l4">
+        <div class="arch-label">Fallback</div>
+        <div class="arch-detail">72 built-in systems from the dropdown. Selected via the Design System picker in the top bar. These are read-only and live in the OD install directory.</div>
+      </div>
+
+      <p>The resolver parses the 9-section format once, caches the body in memory per session, and injects it as a prepended system message on every agent run. It also makes the body available as a <code>&#123;&#123; design_system &#125;&#125;</code> template variable that skills can reference.</p>
+    </section>
+
+    <section id="injection">
+      <div class="eyebrow"><span>04</span> Injection</div>
+      <h2>Injection and token pruning</h2>
+      <p>The full DESIGN.md is injected before every generation. For large brand documents, this can add significant tokens. Skills can prune the injection to only what they actually need:</p>
+
+      <pre><span class="c"># In your SKILL.md frontmatter:</span>
+<span class="k">od</span>:
+  <span class="k">design_system</span>:
+    <span class="k">requires</span>: true
+    <span class="k">sections</span>: [color, typography]  <span class="c"># Only inject sections 2 and 3</span></pre>
+
+      <h3>Which sections each skill type typically needs</h3>
+      <table>
+        <thead><tr><th>Skill type</th><th>Sections needed</th></tr></thead>
+        <tbody>
+          <tr><td>Deck / presentation</td><td>color, typography (sections 2, 3)</td></tr>
+          <tr><td>Marketing landing page</td><td>color, typography, spacing, components, imagery, voice (2,3,4,5,7,9)</td></tr>
+          <tr><td>Dashboard / app UI</td><td>color, typography, spacing, components, iconography, motion (2,3,4,5,6,8)</td></tr>
+          <tr><td>Blog / editorial</td><td>color, typography, imagery, voice (2,3,7,9)</td></tr>
+          <tr><td>Documentation</td><td>color, typography, components, iconography (2,3,5,6)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="catalog">
+      <div class="eyebrow"><span>05</span> Catalog</div>
+      <h2>72 built-in design systems</h2>
+      <p>69 systems imported from the <code>awesome-design-md</code> ecosystem, plus 2 hand-authored starters. Grouped by product category:</p>
+
+      <h3>Hand-authored starters (2)</h3>
+      <div class="grid2">
+        <div class="card"><h4>Neutral Modern <span class="badge badge-g">Default</span></h4><p>Clean, minimal, high-contrast. Neutral palette, system fonts, generous whitespace. Works for any product type without imposing a brand identity.</p></div>
+        <div class="card"><h4>Warm Editorial</h4><p>Serif typography, warm cream palette, magazine-inspired layout. Best for content-heavy sites, blogs, editorial products.</p></div>
+      </div>
+
+      <h3>By category — notable systems</h3>
+      <table>
+        <thead><tr><th>Category</th><th>Notable systems</th></tr></thead>
+        <tbody>
+          <tr><td>AI &amp; LLM</td><td>Anthropic, OpenAI, Perplexity, Cursor, Windsurf, Mistral</td></tr>
+          <tr><td>Developer Tools</td><td>Linear, Vercel, Render, Railway, Supabase, PlanetScale</td></tr>
+          <tr><td>Design Tools</td><td>Figma, Framer, Sketch, Penpot</td></tr>
+          <tr><td>Productivity</td><td>Notion, Cron, Craft, Obsidian, Raycast</td></tr>
+          <tr><td>Fintech</td><td>Stripe, Brex, Mercury, Ramp, Wise</td></tr>
+          <tr><td>E-Commerce</td><td>Shopify, Shopify Polaris, Arc, Mobbin</td></tr>
+          <tr><td>Backend &amp; Infra</td><td>Cloudflare, Fly.io, Neon, Upstash</td></tr>
+          <tr><td>Media &amp; Content</td><td>Substack, Medium, Ghost, Read.cv</td></tr>
+          <tr><td>Consumer Apps</td><td>Apple HIG, Google Material 3, iOS SF Symbols</td></tr>
+          <tr><td>Automotive</td><td>Tesla, Rivian, Volvo</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="writing">
+      <div class="eyebrow"><span>06</span> Writing a system</div>
+      <h2>Building a brand design system</h2>
+      <p>Create <code>./DESIGN.md</code> in your project root. The daemon finds it automatically. Use the template below as a starting point:</p>
+
+      <pre><span class="c"># [Brand Name] Design System</span>
+<span class="c">## [Tagline]</span>
+
+<span class="k">## 1. Identity</span>
+Product: [What it does in one sentence]
+Voice: [Describe tone: technical/warm/playful/authoritative]
+Positioning: [Key differentiators]
+
+<span class="k">## 2. Color</span>
+<span class="c"># Use OKLch for perceptual uniformity + hex fallback</span>
+Primary:   oklch(L% C H)  <span class="c"># #hexvalue — description</span>
+Accent:    oklch(L% C H)  <span class="c"># #hexvalue — description</span>
+Surface:   oklch(L% C H)
+Text:      oklch(L% C H)
+Danger:    oklch(L% C H)
+Success:   oklch(L% C H)
+
+<span class="k">## 3. Typography</span>
+Heading: "[Font family]" [weight] · scale: [rem values]
+Body:    "[Font family]" [weight] · [size]rem / [line-height]
+Mono:    "[Font family]" [weight]
+
+<span class="k">## 4. Spacing</span>
+Base unit: [N]px · Scale: [list values]
+Container: [N]px max-width · Content: [N]px
+
+<span class="k">## 5. Components</span>
+Button: [height] · [radius] · [weight] · [style notes]
+Card: [padding] · [border] · [radius]
+Input: [height] · [radius] · [border] · [focus style]
+
+<span class="k">## 6–9.</span> [Fill in iconography, imagery, motion, voice as needed]</pre>
+
+      <h3>OKLch color — why and how</h3>
+      <p>OKLch (Lightness, Chroma, Hue) produces perceptually uniform colors — equal lightness steps look equal to the human eye, unlike hex values. Formula: <code>oklch(L% C H)</code> where L is 0–100 (lightness), C is 0–0.4 (chroma/saturation), and H is 0–360 (hue angle).</p>
+      <div class="grid2">
+        <div class="card"><h4>Blue primary (rich)</h4><p><code>oklch(55% 0.22 250)</code><br>L=55 (medium dark), C=0.22 (saturated), H=250 (blue-purple)</p></div>
+        <div class="card"><h4>Accent orange (warm)</h4><p><code>oklch(68% 0.20 30)</code><br>L=68 (medium), C=0.20 (moderately saturated), H=30 (orange)</p></div>
+        <div class="card"><h4>Surface (near-white)</h4><p><code>oklch(98% 0.01 250)</code><br>L=98 (very light), C=0.01 (nearly gray), H=250 (slight blue cast)</p></div>
+        <div class="card"><h4>Text (near-black)</h4><p><code>oklch(15% 0.02 250)</code><br>L=15 (very dark), C=0.02 (nearly neutral), H=250 (slight cool cast)</p></div>
+      </div>
+    </section>
+
+    <section id="from-url">
+      <div class="eyebrow"><span>07</span> From URL/screenshot</div>
+      <h2>Generating a system from a reference</h2>
+      <p>The <code>design-system-gen</code> skill (Design System mode) can extract a DESIGN.md from:</p>
+      <ul class="flist">
+        <li><strong>Text brief:</strong> "A B2B SaaS brand inspired by Linear: minimal, dark, precise. Primary blue, mono font for code."</li>
+        <li><strong>Reference URL:</strong> Paste a URL; the agent fetches and analyzes the site's visual language (Phase 2)</li>
+        <li><strong>Screenshot:</strong> Upload a screenshot; vision model extracts palette and typography (Phase 2)</li>
+      </ul>
+      <p>After generation, OD prompts you to set the resulting DESIGN.md as the project's active system. From that point, every prototype, deck, and template generation uses your brand's exact visual language.</p>
+
+      <div class="callout callout-green">
+        <strong>Recommended workflow for new projects:</strong> Run Design System mode first with your brand brief → set the result as active → then use Prototype or Deck mode. This is the single highest-leverage action for output quality and cross-artifact consistency.
+      </div>
+    </section>
+
+    <div class="next-page">
+      <a href="06-reference.html" class="next-link">
+        <span class="next-label">Next: API Reference & Cheatsheet →</span>
+        <span class="next-sub">All endpoints, CLI commands, roadmap, filesystem layout</span>
+      </a>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <div class="footer-brand">Open <em>Design</em></div>
+  <div>Apache-2.0 · <a href="https://github.com/nexu-io/open-design">github.com/nexu-io/open-design</a></div>
+</footer>
+</body>
+</html>

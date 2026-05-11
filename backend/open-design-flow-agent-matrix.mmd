@@ -1,0 +1,86 @@
+flowchart LR
+    %% ── DAEMON SPAWN ─────────────────────────────────────────
+    Spawn(["Daemon\nchild_process.spawn()\napps/daemon/src/agents.ts"])
+
+    %% ── GROUP A: claude-stream-json ──────────────────────────
+    subgraph A ["claude-stream-json  ·  JSONL line-by-line"]
+        direction TB
+        CC["claude\n(Claude Code)\n--output-format stream-json\n--add-dir .od-skills/<id>/\nPrompt via: -p flag\nSkill: copy to .od-skills/ + --add-dir"]
+        CP["copilot\n(GitHub Copilot CLI)\n--output-format json\nPrompt via: -p flag\nSkill: prompt injection"]
+        QO["qodercli\n(Qoder CLI)\n--output-format stream-json\nPrompt via: stdin\nSkill: prompt injection"]
+    end
+
+    %% ── GROUP B: json-event-stream ───────────────────────────
+    subgraph B ["json-event-stream  ·  per-CLI structured JSON"]
+        direction TB
+        CX["codex\n(Codex CLI)\nPrompt via: stdin\nSkill: prompt injection"]
+        GM["gemini\n(Gemini CLI)\nPrompt via: stdin\nSkill: prompt injection"]
+        OC["opencode\n(OpenCode)\nPrompt via: stdin\nSkill: prompt injection"]
+        CA["cursor-agent\n(Cursor Agent)\nPrompt via: stdin\nSkill: .cursorrules file in cwd"]
+    end
+
+    %% ── GROUP C: acp-json-rpc ────────────────────────────────
+    subgraph C ["acp-json-rpc  ·  Agent Communication Protocol over stdio"]
+        direction TB
+        DV["devin\n(Devin for Terminal)\nACP: initialize→session/new→prompt\nSkill: ACP MCP bridge\nStage timeout: 180s"]
+        HM["hermes\n(Hermes)\nACP MCP bridge"]
+        KM["kimi\n(Kimi CLI)\nACP MCP bridge"]
+        KR["kiro-cli\n(Kiro CLI)\nACP MCP bridge"]
+        KL["kilo\n(Kilo)\nACP MCP bridge"]
+        VB["vibe-acp\n(Mistral Vibe CLI)\nACP MCP bridge"]
+    end
+
+    %% ── GROUP D: pi-rpc ──────────────────────────────────────
+    subgraph D ["pi-rpc  ·  Custom stdio JSON-RPC"]
+        direction TB
+        PI["pi\n(Pi)\nsession/new→set_model→prompt\nImage fwd: max 10 imgs, 20 MB\nSkill: prompt injection\nAbort grace: PI_ABORT_GRACE_MS=3000ms"]
+    end
+
+    %% ── GROUP E: plain ───────────────────────────────────────
+    subgraph E ["plain  ·  Raw stdout chunk forwarding"]
+        direction TB
+        QW["qwen\n(Qwen Code)\nPrompt via: stdin\nSkill: prompt injection"]
+        DS["deepseek\n(DeepSeek TUI)\nPrompt via: stdin or -p\nmaxPromptArgBytes: 30 KB\nSkill: prompt injection"]
+    end
+
+    %% ── PARSERS ──────────────────────────────────────────────
+    P_Claude["claude-stream.ts\ncreateClaudeStreamHandler()\nEvents: status · text_delta\nthinking_delta · tool_use\ntool_result · usage · raw"]
+    P_Json["json-event-stream.ts\ncreateJsonEventStreamHandler(kind)\nKinds: opencode · gemini\ncursor-agent · codex"]
+    P_ACP["acp.ts\nattachAcpSession()\nEvents: agent_message_chunk\nagent_thought_chunk\nMCP bridge tools: search_files\nget_file · get_artifact"]
+    P_Pi["pi-rpc.ts\nattachPiRpcSession()\nEvents: agent_start · message_update\ntool_execution_start/end · agent_end"]
+    P_Plain["raw chunks\nno structured parsing\n&lt;artifact&gt; extracted by regex"]
+    P_Copilot["copilot-stream.ts\ncreateCopilotStreamHandler()\nEvents: reasoning_delta\nmessage_delta · tool events"]
+    P_Qoder["qoder-stream.ts\ncreateQoderStreamHandler()\nEvents: text_delta\nthinking_delta · usage"]
+
+    %% ── OUTPUT ───────────────────────────────────────────────
+    Out(["Unified AgentEvents\n→ runs.emit() → SSE → Browser\nstatus · text_delta · thinking_delta\ntool_use · tool_result · usage · end"])
+
+    %% ── EDGES ────────────────────────────────────────────────
+    Spawn --> A & B & C & D & E
+
+    CC --> P_Claude
+    CP --> P_Copilot
+    QO --> P_Qoder
+    CX & GM & OC & CA --> P_Json
+    DV & HM & KM & KR & KL & VB --> P_ACP
+    PI --> P_Pi
+    QW & DS --> P_Plain
+
+    P_Claude & P_Copilot & P_Qoder & P_Json & P_ACP & P_Pi & P_Plain --> Out
+
+    %% ── WINDOWS FALLBACK note ────────────────────────────────
+    Win["⚠️ Windows ENAMETOOLONG fallback\n1. Try: -p arg (argv)\n2. If >32KB: stdin pipe\n3. If stdin unsupported: temp prompt file"]
+    Spawn -.->|"long prompts"| Win
+
+    %% ── STYLES ────────────────────────────────────────────────
+    classDef spawnNode fill:#1c2333,stroke:#1c2333,color:#e2ddd6,font-weight:bold
+    classDef agentNode fill:#f3f0e8,stroke:#706d65,color:#1a1916,font-size:12px
+    classDef parserNode fill:#e6f1fb,stroke:#185fa5,color:#1a1916,font-size:12px
+    classDef outNode fill:#faece7,stroke:#c96442,color:#1a1916,font-weight:bold
+    classDef warnNode fill:#faeeda,stroke:#854f0b,color:#1a1916,font-size:11px
+
+    class Spawn spawnNode
+    class CC,CP,QO,CX,GM,OC,CA,DV,HM,KM,KR,KL,VB,PI,QW,DS agentNode
+    class P_Claude,P_Copilot,P_Qoder,P_Json,P_ACP,P_Pi,P_Plain parserNode
+    class Out outNode
+    class Win warnNode

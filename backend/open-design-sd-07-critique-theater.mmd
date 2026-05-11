@@ -1,0 +1,56 @@
+sequenceDiagram
+    autonumber
+    participant Browser as Browser (WebUI)
+    participant Daemon
+    participant CritiqueOrch as CritiqueOrchestrator
+    participant AgentCLI as Agent CLI
+    participant Parser as Stream Parser
+    participant SQLite
+
+    Note over Daemon: critique.enabled=true (OD_CRITIQUE_ENABLED=true)
+    Daemon->>Daemon: critique addendum injected into system prompt (Layer 9)
+    Daemon->>AgentCLI: child_process.spawn(agentBin, args, { cwd })
+    Daemon->>CritiqueOrch: attach to stdout stream
+
+    rect rgb(230, 240, 255)
+        Note over CritiqueOrch,Parser: Round 1 generation
+        AgentCLI->>Parser: streams text output + artifact HTML
+        AgentCLI->>Parser: emits ROUND n=1
+
+        Note over AgentCLI,Parser: [Uncertain] Exact panelist XML tag format
+        AgentCLI->>Parser: emits PANELIST role=designer<br/>  SCORE dim=philosophy → 8<br/>  SCORE dim=hierarchy → 7<br/>  SCORE dim=detail → 6<br/>  SCORE dim=function → 9<br/>  SCORE dim=innovation → 7
+
+        Parser->>CritiqueOrch: panelist_open → panelist_dim events → panelist_close
+        CritiqueOrch->>CritiqueOrch: computes composite score (daemon-authoritative weighted avg)
+        CritiqueOrch->>Browser: SSE: critique event (live score display, round=1)
+    end
+
+    rect rgb(230, 255, 230)
+        Note over CritiqueOrch: Ship / iterate decision
+        alt composite >= scoreThreshold
+            CritiqueOrch->>CritiqueOrch: decideRound() → SHIP
+        else composite < scoreThreshold
+            CritiqueOrch->>AgentCLI: continue to next round (still in same process turn)
+            Note over AgentCLI,CritiqueOrch: Repeat Round N until threshold met or max rounds reached
+        end
+    end
+
+    AgentCLI->>Parser: emits SHIP round=1 composite=8.2 status=shipped
+    Parser->>CritiqueOrch: ship event
+    CritiqueOrch->>CritiqueOrch: verifies ship round completed
+    CritiqueOrch->>CritiqueOrch: checks composite divergence (agent-reported vs daemon-computed)
+    CritiqueOrch->>CritiqueOrch: final status: shipped / below_threshold
+
+    rect rgb(255, 230, 230)
+        Note over CritiqueOrch: Abort / timeout handling
+        alt abort or timeout before any round completes
+            CritiqueOrch->>CritiqueOrch: no best-so-far → fail
+        else abort/timeout after at least one round
+            CritiqueOrch->>CritiqueOrch: ships best-so-far artifact
+        end
+    end
+
+    CritiqueOrch->>SQLite: persists run record
+    CritiqueOrch->>CritiqueOrch: emits transcript → .critique.jsonl
+    CritiqueOrch->>Browser: SSE: final critique summary event
+    Daemon->>Browser: SSE: event:end

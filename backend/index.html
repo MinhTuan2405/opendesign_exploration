@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Open Design — Engineering Docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-theme" />
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+  /* ── Design tokens ── */
+  :root {
+    --canvas:       #faf9f5;
+    --card-bg:      #ffffff;
+    --warm-surface: #f3f0e8;
+    --coral:        #c96442;
+    --coral-light:  #faece7;
+    --coral-dark:   #993c1d;
+    --navy:         #1c2333;
+    --text-primary: #1a1916;
+    --text-body:    #3d3a34;
+    --text-muted:   #706d65;
+    --text-faint:   #a09c94;
+    --border:       rgba(28,35,51,0.09);
+    --sidebar-w:    272px;
+    --header-h:     58px;
+    --radius:       8px;
+    --shadow-sm:    0 1px 3px rgba(28,35,51,0.08), 0 1px 2px rgba(28,35,51,0.06);
+    --shadow-md:    0 4px 12px rgba(28,35,51,0.10);
+    --transition:   0.18s ease;
+  }
+
+  /* ── Reset / base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--canvas);
+    color: var(--text-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* ── Header ── */
+  #header {
+    position: sticky; top: 0; z-index: 100;
+    height: var(--header-h);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  #header-logo {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none; flex-shrink: 0;
+  }
+  #header-logo svg { width: 28px; height: 28px; }
+  #header-wordmark {
+    font-family: 'Lora', serif;
+    font-size: 15px; font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  #header-wordmark span {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  #header-divider {
+    width: 1px; height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  #search-wrap {
+    flex: 1; max-width: 320px;
+    position: relative;
+  }
+  #search-wrap svg {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--text-faint); pointer-events: none;
+  }
+  #nav-search {
+    width: 100%;
+    padding: 7px 12px 7px 34px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--warm-surface);
+    color: var(--text-body);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  #nav-search:focus {
+    border-color: var(--coral);
+    box-shadow: 0 0 0 3px var(--coral-light);
+    background: var(--card-bg);
+  }
+  #header-pills {
+    display: flex; gap: 8px; flex-shrink: 0;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--warm-surface);
+    border: 1px solid var(--border);
+    font-size: 12px; font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .pill-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--coral);
+    flex-shrink: 0;
+  }
+  #header-github {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-body);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    text-decoration: none;
+    transition: background var(--transition), border-color var(--transition);
+    flex-shrink: 0;
+  }
+  #header-github:hover {
+    background: var(--warm-surface);
+    border-color: var(--text-muted);
+  }
+
+  /* ── Body layout ── */
+  #body { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: var(--card-bg);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px 0 32px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .nav-section-label {
+    padding: 12px 18px 4px;
+    font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    user-select: none;
+  }
+  .nav-section-label:not(:first-child) {
+    margin-top: 8px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 18px;
+    cursor: pointer;
+    border-radius: 0;
+    font-size: 13.5px;
+    color: var(--text-body);
+    transition: background var(--transition), color var(--transition);
+    border: none; background: none;
+    width: 100%; text-align: left;
+    position: relative;
+  }
+  .nav-item:hover {
+    background: var(--warm-surface);
+    color: var(--text-primary);
+  }
+  .nav-item.active {
+    background: var(--coral-light);
+    color: var(--coral-dark);
+    font-weight: 500;
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--coral);
+    border-radius: 0 2px 2px 0;
+  }
+  .nav-item.hidden { display: none; }
+  .nav-num {
+    font-size: 11px; font-weight: 600;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    min-width: 22px;
+  }
+  .nav-label { flex: 1; }
+  .badge-new {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: var(--coral);
+    color: #fff;
+    font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  /* ── Main content ── */
+  #main {
+    flex: 1; overflow-y: auto;
+    padding: 0;
+    display: flex; flex-direction: column;
+  }
+  #content-area {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 48px 80px;
+    width: 100%;
+  }
+
+  /* ── Welcome screen ── */
+  #welcome { }
+  .welcome-hero {
+    margin-bottom: 36px;
+  }
+  .welcome-hero h1 {
+    font-family: 'Lora', serif;
+    font-size: 28px; font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.25;
+    margin-bottom: 10px;
+  }
+  .welcome-hero p {
+    font-size: 15px;
+    color: var(--text-muted);
+    max-width: 560px;
+    line-height: 1.6;
+  }
+  .reading-order-notice {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 18px;
+    background: var(--coral-light);
+    border: 1px solid rgba(201,100,66,0.2);
+    border-radius: var(--radius);
+    margin-bottom: 36px;
+    font-size: 13.5px;
+    color: var(--coral-dark);
+    line-height: 1.55;
+  }
+  .reading-order-notice svg { flex-shrink: 0; margin-top: 1px; }
+  .artifact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .artifact-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: box-shadow var(--transition), border-color var(--transition), transform var(--transition);
+  }
+  .artifact-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: rgba(201,100,66,0.25);
+    transform: translateY(-1px);
+  }
+  .card-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+  .card-title {
+    font-family: 'Lora', serif;
+    font-size: 15px; font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+  .card-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .card-type {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--warm-surface);
+    font-size: 11px; font-weight: 500;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .card-new { border-color: rgba(201,100,66,0.35); }
+  .card-new .card-num { color: var(--coral); }
+
+  /* ── Mermaid / diagram area ── */
+  #mmd-area {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 24px;
+    overflow-x: auto;
+  }
+  #mmd-title {
+    font-family: 'Lora', serif;
+    font-size: 20px; font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+  }
+  #mmd-loading {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ── Markdown content ── */
+  #md-content {
+    /* rendered markdown lives here */
+  }
+  #md-content h1 {
+    font-family: 'Lora', serif;
+    font-size: 26px; font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+    line-height: 1.25;
+  }
+  #md-content h2 {
+    font-family: 'Lora', serif;
+    font-size: 20px; font-weight: 600;
+    color: var(--text-primary);
+    margin: 36px 0 12px;
+    line-height: 1.3;
+  }
+  #md-content h3 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15.5px; font-weight: 600;
+    color: var(--text-primary);
+    margin: 24px 0 8px;
+    line-height: 1.35;
+  }
+  #md-content h4 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 600;
+    color: var(--text-muted);
+    margin: 18px 0 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  #md-content p {
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--text-body);
+    margin-bottom: 14px;
+  }
+  #md-content a {
+    color: var(--coral);
+    text-decoration: none;
+    border-bottom: 1px solid var(--coral-light);
+    transition: border-color var(--transition);
+  }
+  #md-content a:hover { border-bottom-color: var(--coral); }
+  #md-content ul, #md-content ol {
+    padding-left: 22px;
+    margin-bottom: 14px;
+  }
+  #md-content li {
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: var(--text-body);
+    margin-bottom: 4px;
+  }
+  #md-content li > ul, #md-content li > ol { margin-top: 4px; margin-bottom: 4px; }
+  #md-content blockquote {
+    margin: 18px 0;
+    padding: 12px 18px;
+    border-left: 4px solid var(--coral);
+    background: var(--coral-light);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    color: var(--coral-dark);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  #md-content blockquote p {
+    color: var(--coral-dark);
+    margin-bottom: 0;
+    font-size: 14px;
+  }
+  #md-content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+  #md-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    margin-bottom: 20px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  #md-content th {
+    background: var(--warm-surface);
+    padding: 9px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+  }
+  #md-content td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-body);
+    vertical-align: top;
+  }
+  #md-content tr:last-child td { border-bottom: none; }
+  #md-content tr:nth-child(even) td { background: rgba(243,240,232,0.3); }
+  #md-content code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    background: var(--warm-surface);
+    color: var(--coral-dark);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+  #md-content pre {
+    background: var(--navy) !important;
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    margin: 16px 0 20px;
+    overflow-x: auto;
+    box-shadow: var(--shadow-sm);
+  }
+  #md-content pre code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    background: none !important;
+    color: #e2e8f0 !important;
+    padding: 0;
+    border: none;
+  }
+  /* Mermaid blocks inside markdown */
+  #md-content .mermaid-block {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin: 20px 0;
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  /* ── Loading / error states ── */
+  .loading-msg {
+    text-align: center; padding: 80px 0;
+    color: var(--text-muted); font-size: 14px;
+  }
+  .error-msg {
+    padding: 24px;
+    background: #fff2f0;
+    border: 1px solid #ffa39e;
+    border-radius: var(--radius);
+    color: #820014;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── Footer ── */
+  #footer {
+    padding: 14px 48px;
+    border-top: 1px solid var(--border);
+    background: var(--card-bg);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .footer-left {
+    display: flex; align-items: center; gap: 16px;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .footer-sep { color: var(--border); }
+  .footer-active-file {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-faint);
+  }
+
+  /* ── Highlight.js dark theme override ── */
+  .hljs {
+    background: var(--navy) !important;
+    color: #e2e8f0 !important;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(112,109,101,0.35); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(112,109,101,0.55); }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    #content-area { padding: 28px 24px 60px; }
+    #footer { padding: 12px 24px; }
+  }
+  @media (max-width: 640px) {
+    #sidebar { display: none; }
+    #header-pills { display: none; }
+    #header-github { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── HEADER ── -->
+  <header id="header">
+    <a id="header-logo" href="#" onclick="showWelcome(event)">
+      <!-- Spike-mark SVG logo -->
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="28" height="28" rx="6" fill="#c96442"/>
+        <path d="M7 20 L14 6 L21 20" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M9.5 15.5 L18.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="14" cy="6" r="1.8" fill="white"/>
+      </svg>
+      <span id="header-wordmark">Open Design <span>/ Engineering Docs</span></span>
+    </a>
+    <div id="header-divider"></div>
+    <div id="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M9 3a6 6 0 100 12A6 6 0 009 3zm-8 6a8 8 0 1114.32 4.906l4.387 4.387a1 1 0 01-1.414 1.414l-4.387-4.387A8 8 0 011 9z" clip-rule="evenodd"/>
+      </svg>
+      <input type="search" id="nav-search" placeholder="Filter docs…" oninput="filterNav(this.value)" autocomplete="off" />
+    </div>
+    <div id="header-pills">
+      <span class="pill"><span class="pill-dot"></span>31 Skills</span>
+      <span class="pill"><span class="pill-dot"></span>72 Design Systems</span>
+    </div>
+    <div id="header-divider" style="margin-left:auto"></div>
+    <a id="header-github" href="https://github.com" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+      </svg>
+      GitHub
+    </a>
+  </header>
+
+  <!-- ── BODY ── -->
+  <div id="body">
+
+    <!-- ── SIDEBAR ── -->
+    <nav id="sidebar" aria-label="Documentation navigation">
+
+      <div class="nav-section-label">Start Here</div>
+      <button class="nav-item" data-file="open-design-artifacts-index.md" data-title="Artifact Index" data-type="md"
+              onclick="loadDoc(this,'open-design-artifacts-index.md','Artifact Index','md')">
+        <span class="nav-num">00</span>
+        <span class="nav-label">Artifact Index</span>
+      </button>
+
+      <div class="nav-section-label">Architecture</div>
+      <button class="nav-item" data-file="open-design-folder-map.md" data-title="Folder Map" data-type="md"
+              onclick="loadDoc(this,'open-design-folder-map.md','Folder Map','md')">
+        <span class="nav-num">01</span>
+        <span class="nav-label">Folder Map</span>
+      </button>
+      <button class="nav-item" data-file="open-design-architecture-overview.mmd" data-title="Architecture Overview" data-type="mmd"
+              onclick="loadMmd(this,'open-design-architecture-overview.mmd','Architecture Overview')">
+        <span class="nav-num">02</span>
+        <span class="nav-label">Architecture Overview</span>
+      </button>
+      <button class="nav-item" data-file="open-design-runtime-sequence.mmd" data-title="Runtime Sequence" data-type="mmd"
+              onclick="loadMmd(this,'open-design-runtime-sequence.mmd','Runtime Sequence')">
+        <span class="nav-num">03</span>
+        <span class="nav-label">Runtime Sequence</span>
+      </button>
+
+      <div class="nav-section-label">Backend</div>
+      <button class="nav-item" data-file="open-design-backend-deep-dive.md" data-title="Backend Deep Dive" data-type="md"
+              onclick="loadDoc(this,'open-design-backend-deep-dive.md','Backend Deep Dive','md')">
+        <span class="nav-num">04</span>
+        <span class="nav-label">Backend Deep Dive</span>
+      </button>
+      <button class="nav-item" data-file="open-design-data-flow-map.md" data-title="Data Flow Map" data-type="md"
+              onclick="loadDoc(this,'open-design-data-flow-map.md','Data Flow Map','md')">
+        <span class="nav-num">05</span>
+        <span class="nav-label">Data Flow Map</span>
+      </button>
+      <button class="nav-item" data-file="open-design-backend-reading-map.md" data-title="Backend Reading Map" data-type="md"
+              onclick="loadDoc(this,'open-design-backend-reading-map.md','Backend Reading Map','md')">
+        <span class="nav-num">06</span>
+        <span class="nav-label">Backend Reading Map</span>
+      </button>
+
+      <div class="nav-section-label">Data Flows</div>
+      <button class="nav-item" data-file="open-design-flow-master.mmd" data-title="Master Data Flow" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-master.mmd','Master Data Flow')">
+        <span class="nav-num">F0</span>
+        <span class="nav-label">Master Data Flow</span>
+      </button>
+      <button class="nav-item" data-file="open-design-flow-prompt-stack.mmd" data-title="Prompt Stack" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-prompt-stack.mmd','Prompt Stack (10 Layers)')">
+        <span class="nav-num">F1</span>
+        <span class="nav-label">Prompt Stack</span>
+      </button>
+      <button class="nav-item" data-file="open-design-flow-agent-matrix.mmd" data-title="Agent Matrix" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-agent-matrix.mmd','Agent Matrix (16 Agents)')">
+        <span class="nav-num">F2</span>
+        <span class="nav-label">Agent Matrix</span>
+      </button>
+      <button class="nav-item" data-file="open-design-flow-artifact-pipeline.mmd" data-title="Artifact Pipeline" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-artifact-pipeline.mmd','Artifact Pipeline')">
+        <span class="nav-num">F3</span>
+        <span class="nav-label">Artifact Pipeline</span>
+      </button>
+      <button class="nav-item" data-file="open-design-flow-storage.mmd" data-title="Storage Architecture" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-storage.mmd','Storage Architecture')">
+        <span class="nav-num">F4</span>
+        <span class="nav-label">Storage Architecture</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sequence-diagrams.md" data-title="Sequence Diagrams" data-type="md"
+              onclick="loadDoc(this,'open-design-sequence-diagrams.md','Sequence Diagrams','md')">
+        <span class="nav-num">F5</span>
+        <span class="nav-label">Sequence Diagrams ×10</span>
+      </button>
+
+      <div class="nav-section-label">Sequence Diagrams</div>
+      <button class="nav-item" data-file="open-design-sd-01-claude-code.mmd" data-title="SD-01 Claude Code Path" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-01-claude-code.mmd','SD-01: Claude Code Path')">
+        <span class="nav-num">SD01</span>
+        <span class="nav-label">Claude Code Path</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sd-02-acp-agent.mmd" data-title="SD-02 ACP Agent Path" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-02-acp-agent.mmd','SD-02: ACP Agent Path')">
+        <span class="nav-num">SD02</span>
+        <span class="nav-label">ACP Agent Path</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sd-03-byok-proxy.mmd" data-title="SD-03 BYOK Proxy Path" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-03-byok-proxy.mmd','SD-03: BYOK Proxy Path')">
+        <span class="nav-num">SD03</span>
+        <span class="nav-label">BYOK Proxy Path</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sd-04-mcp-bridge.mmd" data-title="SD-04 External MCP Bridge" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-04-mcp-bridge.mmd','SD-04: External MCP Bridge')">
+        <span class="nav-num">SD04</span>
+        <span class="nav-label">External MCP Bridge</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sd-05-agent-detection.mmd" data-title="SD-05 Agent Detection" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-05-agent-detection.mmd','SD-05: Agent Detection')">
+        <span class="nav-num">SD05</span>
+        <span class="nav-label">Agent Detection</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sd-06-skill-selection.mmd" data-title="SD-06 Skill Selection" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-06-skill-selection.mmd','SD-06: Skill Selection &amp; Prompt Assembly')">
+        <span class="nav-num">SD06</span>
+        <span class="nav-label">Skill Selection &amp; Prompt</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sd-07-critique-theater.mmd" data-title="SD-07 Critique Theater" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-07-critique-theater.mmd','SD-07: Critique Theater')">
+        <span class="nav-num">SD07</span>
+        <span class="nav-label">Critique Theater</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sd-08-export-pipeline.mmd" data-title="SD-08 Export Pipeline" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-08-export-pipeline.mmd','SD-08: Export Pipeline')">
+        <span class="nav-num">SD08</span>
+        <span class="nav-label">Export Pipeline</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sd-09-pi-rpc.mmd" data-title="SD-09 Pi Agent (pi-rpc)" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-09-pi-rpc.mmd','SD-09: Pi Agent (pi-rpc)')">
+        <span class="nav-num">SD09</span>
+        <span class="nav-label">Pi Agent (pi-rpc)</span>
+      </button>
+      <button class="nav-item" data-file="open-design-sd-10-live-artifact-refresh.mmd" data-title="SD-10 Live Artifact Refresh" data-type="mmd"
+              onclick="loadMmd(this,'open-design-sd-10-live-artifact-refresh.mmd','SD-10: Live Artifact Refresh')">
+        <span class="nav-num">SD10</span>
+        <span class="nav-label">Live Artifact Refresh</span>
+      </button>
+
+      <div class="nav-section-label">Agentic Platform</div>
+      <button class="nav-item" data-file="open-design-agentic-platform.md" data-title="Agentic Platform" data-type="md"
+              onclick="loadDoc(this,'open-design-agentic-platform.md','Agentic Platform','md')">
+        <span class="nav-num">07</span>
+        <span class="nav-label">Agentic Platform</span>
+        <span class="badge-new">NEW</span>
+      </button>
+
+      <div class="nav-section-label">Design Systems &amp; Skills</div>
+      <button class="nav-item" data-file="open-design-design-systems-and-skills.md" data-title="Design Systems &amp; Skills" data-type="md"
+              onclick="loadDoc(this,'open-design-design-systems-and-skills.md','Design Systems &amp; Skills','md')">
+        <span class="nav-num">08</span>
+        <span class="nav-label">Design Systems &amp; Skills</span>
+      </button>
+
+      <div class="nav-section-label">Developer</div>
+      <button class="nav-item" data-file="open-design-developer-onboarding.md" data-title="Developer Onboarding" data-type="md"
+              onclick="loadDoc(this,'open-design-developer-onboarding.md','Developer Onboarding','md')">
+        <span class="nav-num">09</span>
+        <span class="nav-label">Developer Onboarding</span>
+      </button>
+      <button class="nav-item" data-file="open-design-extension-points.md" data-title="Extension Points" data-type="md"
+              onclick="loadDoc(this,'open-design-extension-points.md','Extension Points','md')">
+        <span class="nav-num">10</span>
+        <span class="nav-label">Extension Points</span>
+      </button>
+
+      <div class="nav-section-label">Audit</div>
+      <button class="nav-item" data-file="open-design-repo-audit.md" data-title="Repo Audit" data-type="md"
+              onclick="loadDoc(this,'open-design-repo-audit.md','Repo Audit','md')">
+        <span class="nav-num">11</span>
+        <span class="nav-label">Repo Audit</span>
+      </button>
+
+    </nav>
+
+    <!-- ── MAIN ── -->
+    <main id="main">
+      <div id="content-area">
+        <div id="welcome"></div>
+        <div id="md-area" style="display:none"><div id="md-content"></div></div>
+        <div id="mmd-area" style="display:none">
+          <div id="mmd-title"></div>
+          <div id="mmd-loading">Loading diagram…</div>
+          <div id="mmd-render"></div>
+        </div>
+      </div>
+
+      <!-- ── FOOTER ── -->
+      <footer id="footer">
+        <div class="footer-left">
+          <span>open-design</span>
+          <span class="footer-sep">|</span>
+          <span>Apache-2.0</span>
+          <span class="footer-sep">|</span>
+          <span>docs/backend_explorations/open-design/</span>
+        </div>
+        <div class="footer-active-file" id="footer-file">index.html</div>
+      </footer>
+    </main>
+
+  </div><!-- /#body -->
+</div><!-- /#app -->
+
+<script>
+// ── State ──
+let activeNavEl = null;
+let mermaidReady = false;
+
+// ── Mermaid init ──
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  themeVariables: {
+    fontFamily: "'DM Sans', system-ui, sans-serif",
+    fontSize: '13px',
+    primaryColor: '#faece7',
+    primaryBorderColor: '#c96442',
+    primaryTextColor: '#1a1916',
+    lineColor: '#706d65',
+    secondaryColor: '#f3f0e8',
+    tertiaryColor: '#ffffff',
+  }
+});
+mermaidReady = true;
+
+// ── marked config ──
+marked.setOptions({
+  breaks: false,
+  gfm: true,
+});
+
+// ── Nav filter ──
+function filterNav(q) {
+  const query = q.toLowerCase().trim();
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    if (!query) { btn.classList.remove('hidden'); return; }
+    const label = (btn.querySelector('.nav-label')?.textContent || '').toLowerCase();
+    const num = (btn.querySelector('.nav-num')?.textContent || '').toLowerCase();
+    const file = (btn.dataset.file || '').toLowerCase();
+    btn.classList.toggle('hidden', !label.includes(query) && !num.includes(query) && !file.includes(query));
+  });
+}
+
+// ── Nav activation ──
+function setActive(el) {
+  if (activeNavEl) activeNavEl.classList.remove('active');
+  if (el) { el.classList.add('active'); activeNavEl = el; }
+}
+
+function showArea(name) {
+  ['welcome','md-area','mmd-area'].forEach(id => {
+    document.getElementById(id).style.display = id === name ? '' : 'none';
+  });
+}
+
+// ── Welcome screen ──
+const ARTIFACTS = [
+  { num: '00', title: 'Artifact Index', file: 'open-design-artifacts-index.md', type: 'md', desc: 'Entry point and reading order for the complete artifact set.' },
+  { num: '01', title: 'Folder Map', file: 'open-design-folder-map.md', type: 'md', desc: 'Annotated directory tree with runtime roles and key file locations.' },
+  { num: '02', title: 'Architecture Overview', file: 'open-design-architecture-overview.mmd', type: 'mmd', desc: 'Mermaid flowchart of the full static system topology.' },
+  { num: '03', title: 'Runtime Sequence', file: 'open-design-runtime-sequence.mmd', type: 'mmd', desc: 'End-to-end generation flow from user prompt to rendered preview.' },
+  { num: '04', title: 'Backend Deep Dive', file: 'open-design-backend-deep-dive.md', type: 'md', desc: 'Comprehensive deep-dive into daemon architecture and subsystems.' },
+  { num: '05', title: 'Data Flow Map', file: 'open-design-data-flow-map.md', type: 'md', desc: 'Request lifecycle, event routing, SSE buffering, and persistence.' },
+  { num: '06', title: 'Backend Reading Map', file: 'open-design-backend-reading-map.md', type: 'md', desc: 'Goal-oriented reading paths for the 10 most important source files.' },
+  { num: '07', title: 'Agentic Platform', file: 'open-design-agentic-platform.md', type: 'md', desc: 'Deep dive into all 16 agent adapters, ACP protocol, and stream parsers.', isNew: true },
+  { num: '08', title: 'Design Systems & Skills', file: 'open-design-design-systems-and-skills.md', type: 'md', desc: 'Skill frontmatter schema, craft system, and design system conventions.' },
+  { num: '09', title: 'Developer Onboarding', file: 'open-design-developer-onboarding.md', type: 'md', desc: 'Setup steps, common commands, workspace structure, and first-PR guide.' },
+  { num: '10', title: 'Extension Points', file: 'open-design-extension-points.md', type: 'md', desc: 'Step-by-step playbook for all 9 supported extension patterns.' },
+  { num: '11', title: 'Repo Audit', file: 'open-design-repo-audit.md', type: 'md', desc: 'Accuracy review, architecture risks, security areas, and next steps.' },
+  { num: 'F0', title: 'Master Data Flow', file: 'open-design-flow-master.mmd', type: 'mmd', desc: 'All actors, all paths — user, BYOK, external MCP agent — in one flowchart.', isNew: true },
+  { num: 'F1', title: 'Prompt Stack', file: 'open-design-flow-prompt-stack.mmd', type: 'mmd', desc: '10-layer prompt composition with conditions for each layer.', isNew: true },
+  { num: 'F2', title: 'Agent Matrix', file: 'open-design-flow-agent-matrix.mmd', type: 'mmd', desc: '16 agents grouped by stream format, parsers, and skill injection.', isNew: true },
+  { num: 'F3', title: 'Artifact Pipeline', file: 'open-design-flow-artifact-pipeline.mmd', type: 'mmd', desc: 'From agent stdout to lint check to srcdoc preview and export.', isNew: true },
+  { num: 'F4', title: 'Storage Architecture', file: 'open-design-flow-storage.mmd', type: 'mmd', desc: 'All write paths, 7 SQLite tables, filesystem layout, in-memory state.', isNew: true },
+  { num: 'F5', title: 'Sequence Diagrams ×10', file: 'open-design-sequence-diagrams.md', type: 'md', desc: '10 sequence diagrams with full context descriptions: Claude path, ACP, BYOK, MCP, and more.', isNew: true },
+  { num: 'SD01', title: 'Claude Code Path', file: 'open-design-sd-01-claude-code.mmd', type: 'mmd', desc: 'Full Claude Code generation turn: skill staging, 10-layer prompt, JSONL stream, lint loop.', isNew: true },
+  { num: 'SD02', title: 'ACP Agent Path', file: 'open-design-sd-02-acp-agent.mmd', type: 'mmd', desc: 'ACP JSON-RPC handshake, MCP bridge tool calls, and streaming output for Hermes/Kimi/Kiro.', isNew: true },
+  { num: 'SD03', title: 'BYOK Proxy Path', file: 'open-design-sd-03-byok-proxy.mmd', type: 'mmd', desc: 'SSRF check, API key loading, skill prompt injection, and Anthropic SSE normalization.', isNew: true },
+  { num: 'SD04', title: 'External MCP Bridge', file: 'open-design-sd-04-mcp-bridge.mmd', type: 'mmd', desc: 'External agent (Claude Code) attaching to the OD MCP server for read-only artifact access.', isNew: true },
+  { num: 'SD05', title: 'Agent Detection', file: 'open-design-sd-05-agent-detection.mmd', type: 'mmd', desc: 'Daemon startup: parallel probe of all 16 agent executables, capability parsing, model caching.', isNew: true },
+  { num: 'SD06', title: 'Skill Selection & Prompt', file: 'open-design-sd-06-skill-selection.mmd', type: 'mmd', desc: 'Skill/DS enumeration, user selection, craft loading, and 10-layer prompt composition.', isNew: true },
+  { num: 'SD07', title: 'Critique Theater', file: 'open-design-sd-07-critique-theater.mmd', type: 'mmd', desc: 'Multi-round self-critique loop: panelist scoring, composite threshold, ship/iterate decision.', isNew: true },
+  { num: 'SD08', title: 'Export Pipeline', file: 'open-design-sd-08-export-pipeline.mmd', type: 'mmd', desc: 'HTML/PDF/PPTX/ZIP/Markdown export: asset inlining, archiver, and browser download trigger.', isNew: true },
+  { num: 'SD09', title: 'Pi Agent (pi-rpc)', file: 'open-design-sd-09-pi-rpc.mmd', type: 'mmd', desc: 'Pi custom pi-rpc protocol: image validation, extension_ui auto-reply, graceful shutdown.', isNew: true },
+  { num: 'SD10', title: 'Live Artifact Refresh', file: 'open-design-sd-10-live-artifact-refresh.mmd', type: 'mmd', desc: 'Connector data fetch, BoundedJson validation, optional mini agent re-render, SSE update.', isNew: true },
+];
+
+function loadWelcome(el) {
+  if (el) setActive(el);
+  showArea('welcome');
+  document.getElementById('footer-file').textContent = 'index.html';
+
+  const welcome = document.getElementById('welcome');
+  welcome.innerHTML = `
+    <div class="welcome-hero">
+      <h1>Open Design — Engineering Documentation</h1>
+      <p>Twelve artifacts covering the daemon architecture, agent adapters, skill system, security model, and extension points for the Open Design repository.</p>
+    </div>
+    <div class="reading-order-notice">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="margin-top:1px;flex-shrink:0" aria-hidden="true">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+      <div><strong>Recommended reading order:</strong> Start with 00 (Index) for orientation, then 01 (Folder Map) for layout, then 02–03 (diagrams) for the visual architecture. For backend work, continue with 04–06. For extending the system, jump to 10 (Extension Points). The 07 Agentic Platform document is newly added and covers all 16 agent adapters in depth.</div>
+    </div>
+    <div class="artifact-grid" id="artifact-grid"></div>
+  `;
+
+  const grid = document.getElementById('artifact-grid');
+  ARTIFACTS.forEach(a => {
+    const card = document.createElement('div');
+    card.className = 'artifact-card' + (a.isNew ? ' card-new' : '');
+    card.innerHTML = `
+      <div class="card-num">${a.num}${a.isNew ? ' &nbsp;<span style="color:var(--coral);font-weight:700;font-family:\'DM Sans\',sans-serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">NEW</span>' : ''}</div>
+      <div class="card-title">${a.title}</div>
+      <div class="card-desc">${a.desc}</div>
+      <span class="card-type">${a.type === 'mmd' ? 'mermaid' : 'markdown'}</span>
+    `;
+    card.addEventListener('click', () => {
+      const navBtn = document.querySelector(`.nav-item[data-file="${a.file}"]`);
+      if (a.type === 'mmd') loadMmd(navBtn, a.file, a.title);
+      else loadDoc(navBtn, a.file, a.title, 'md');
+    });
+    grid.appendChild(card);
+  });
+}
+
+function showWelcome(e) {
+  if (e) e.preventDefault();
+  loadWelcome(null);
+}
+
+// ── Markdown loader ──
+async function loadDoc(navEl, filename, title, type) {
+  setActive(navEl);
+  showArea('md-area');
+  document.getElementById('footer-file').textContent = filename;
+  const content = document.getElementById('md-content');
+  content.innerHTML = '<div class="loading-msg">Loading…</div>';
+
+  try {
+    const res = await fetch(filename);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const text = await res.text();
+    const rendered = await renderMarkdown(text);
+    content.innerHTML = rendered;
+    // Syntax highlight
+    content.querySelectorAll('pre code').forEach(block => {
+      // Skip mermaid blocks — they are handled separately
+      if (!block.closest('.mermaid-block')) {
+        hljs.highlightElement(block);
+      }
+    });
+    // Render mermaid blocks
+    const mmdBlocks = content.querySelectorAll('.mermaid-block');
+    if (mmdBlocks.length > 0 && mermaidReady) {
+      for (let i = 0; i < mmdBlocks.length; i++) {
+        const block = mmdBlocks[i];
+        const code = block.dataset.mmdCode;
+        try {
+          const id = 'mmd-inline-' + Date.now() + '-' + i;
+          const { svg } = await mermaid.render(id, code);
+          block.innerHTML = svg;
+        } catch (err) {
+          block.innerHTML = `<pre style="color:#c0392b;font-size:12px">${escapeHtml(err.message)}</pre>`;
+        }
+      }
+    }
+    // Scroll to top
+    document.getElementById('main').scrollTop = 0;
+  } catch (err) {
+    content.innerHTML = `<div class="error-msg"><strong>Could not load ${escapeHtml(filename)}</strong><br>${escapeHtml(err.message)}<br><br>Make sure this page is served over HTTP (not file://) and that the file exists in the same directory as index.html.</div>`;
+  }
+}
+
+// ── Mermaid loader ──
+async function loadMmd(navEl, filename, title) {
+  setActive(navEl);
+  showArea('mmd-area');
+  document.getElementById('footer-file').textContent = filename;
+  document.getElementById('mmd-title').textContent = title;
+  const loading = document.getElementById('mmd-loading');
+  const render = document.getElementById('mmd-render');
+  loading.style.display = '';
+  render.innerHTML = '';
+
+  try {
+    const res = await fetch(filename);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const code = await res.text();
+    loading.style.display = 'none';
+    const id = 'mmd-main-' + Date.now();
+    const { svg } = await mermaid.render(id, code.trim());
+    render.innerHTML = svg;
+    document.getElementById('main').scrollTop = 0;
+  } catch (err) {
+    loading.style.display = 'none';
+    render.innerHTML = `<div class="error-msg"><strong>Could not render ${escapeHtml(filename)}</strong><br>${escapeHtml(err.message)}<br><br>Make sure this page is served over HTTP and the .mmd file exists.</div>`;
+  }
+}
+
+// ── Markdown renderer with mermaid interception ──
+async function renderMarkdown(text) {
+  // Custom renderer to intercept mermaid code blocks
+  const renderer = new marked.Renderer();
+  const mermaidBlocks = [];
+
+  renderer.code = function(code, lang) {
+    if (lang === 'mermaid') {
+      const idx = mermaidBlocks.length;
+      mermaidBlocks.push(code);
+      return `<div class="mermaid-block" data-mmd-index="${idx}" data-mmd-code="${escapeAttr(code)}"><div style="color:var(--text-muted);font-size:13px;padding:20px">Rendering diagram…</div></div>`;
+    }
+    // Dark code block
+    const langClass = lang ? ` class="language-${escapeHtml(lang)}"` : '';
+    return `<pre><code${langClass}>${escapeHtml(code)}</code></pre>`;
+  };
+
+  marked.use({ renderer });
+  return marked.parse(text);
+}
+
+// ── Utilities ──
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function escapeAttr(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// ── Init ──
+loadWelcome(null);
+</script>
+</body>
+</html>
