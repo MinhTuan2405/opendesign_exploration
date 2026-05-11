@@ -1,0 +1,22 @@
+flowchart TD
+    A["Browser receives SSE text_delta events\nstreaming from Daemon runs.emit()"]
+    B["ArtifactParser.feed(delta)\nappend delta to internal buffer\nstate machine: scanning"]
+    C{"findOpenTag(buffer)"}
+    D["kind:partial\nartifact tag not yet complete\nwait for more input"]
+    E["kind:complete\nparseAttrs()\nidentifier · type · title extracted"]
+    F["emit artifact:start\nbrowser shows loading skeleton in preview pane"]
+    G["state: inside_artifact\naccumulate delta in state.content\nemit artifact:chunk per delta"]
+    H{"findCloseTag(buffer)"}
+    I["emit artifact:end\nidentifier · fullContent string"]
+    J["iframe.srcdoc = fullContent\nbrowser parses and renders HTML\nin sandboxed iframe context"]
+    K["Next artifact in same turn\nparser resets state → scanning"]
+
+    A --> B --> C
+    C -- partial --> D --> B
+    C -- complete --> E --> F --> G --> H
+    H -- not found --> G
+    H -- found --> I --> J --> K
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style B fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style J fill:#e8f5e9,stroke:#2e7d32,color:#1a1916

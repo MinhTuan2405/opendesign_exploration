@@ -1,0 +1,28 @@
+flowchart TD
+    A["derivePreflight(skillBody)\ndetects assets/template.html\nor references/*.md patterns"]
+    B["Inject pre-flight directive into system prompt\nRULE: Read seed + reference files BEFORE writing"]
+    C["Agent reads .od-skills/id/assets/template.html\n(CWD-relative primary path)"]
+    D["Agent reads .od-skills/id/references/checklist.md\n(and other references/*.md)"]
+    E["Agent generates HTML output\nbinds design tokens into :root block"]
+    F["Agent writes index.html to project CWD\n.od/projects/id/index.html"]
+    G["Agent emits artifact open tag\n&lt;artifact identifier=... type=text/html title=...&gt;"]
+    H["Streams file content to stdout\nas text_delta chunks → ArtifactParser.feed()"]
+    I["Agent emits artifact close tag\n&lt;/artifact&gt;"]
+    K["lintArtifact(fullContent)\napps/daemon/src/lint-artifact.ts"]
+    J{"P0 findings?"}
+    L["P0 violations found\npurple-gradient · trust-gradient\nai-default-indigo · emoji-icon\nlorem-filler · invented-metric\nfiller-copy · scroll-into-view"]
+    M["renderFindingsForAgent(findings)\nformatted Markdown block with fix hints"]
+    N["Inject lint-feedback as system message\nnext turn context — agent self-corrects"]
+    O["Agent emits corrected artifact\n(loop back to G)"]
+    DONE["artifact:end delivered to preview\niframe.srcdoc = fullContent"]
+
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> K
+    K --> J
+    J -- P0 found --> L --> M --> N --> O --> G
+    J -- clean / P1-P2 only --> DONE
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style K fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style J fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style L fill:#fde8e8,stroke:#c0392b,color:#1a1916
+    style DONE fill:#e8f5e9,stroke:#2e7d32,color:#1a1916

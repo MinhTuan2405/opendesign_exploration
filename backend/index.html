@@ -468,6 +468,21 @@
     text-align: center;
   }
 
+  /* ── Grid section headers ── */
+  .grid-section-header {
+    grid-column: 1 / -1;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 20px 0 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+  .grid-section-header:first-child { padding-top: 0; }
+
   /* ── Loading / error states ── */
   .loading-msg {
     text-align: center; padding: 80px 0;
@@ -568,14 +583,13 @@
     <!-- ── SIDEBAR ── -->
     <nav id="sidebar" aria-label="Documentation navigation">
 
-      <div class="nav-section-label">Start Here</div>
+      <!-- ── Overview ── -->
+      <div class="nav-section-label">Overview</div>
       <button class="nav-item" data-file="open-design-artifacts-index.md" data-title="Artifact Index" data-type="md"
               onclick="loadDoc(this,'open-design-artifacts-index.md','Artifact Index','md')">
         <span class="nav-num">00</span>
         <span class="nav-label">Artifact Index</span>
       </button>
-
-      <div class="nav-section-label">Architecture</div>
       <button class="nav-item" data-file="open-design-folder-map.md" data-title="Folder Map" data-type="md"
               onclick="loadDoc(this,'open-design-folder-map.md','Folder Map','md')">
         <span class="nav-num">01</span>
@@ -583,65 +597,75 @@
       </button>
       <button class="nav-item" data-file="open-design-architecture-overview.mmd" data-title="Architecture Overview" data-type="mmd"
               onclick="loadMmd(this,'open-design-architecture-overview.mmd','Architecture Overview')">
-        <span class="nav-num">02</span>
+        <span class="nav-num">AR</span>
         <span class="nav-label">Architecture Overview</span>
       </button>
       <button class="nav-item" data-file="open-design-runtime-sequence.mmd" data-title="Runtime Sequence" data-type="mmd"
-              onclick="loadMmd(this,'open-design-runtime-sequence.mmd','Runtime Sequence')">
-        <span class="nav-num">03</span>
+              onclick="loadMmd(this,'open-design-runtime-sequence.mmd','Runtime Sequence (End-to-End)')">
+        <span class="nav-num">RS</span>
         <span class="nav-label">Runtime Sequence</span>
       </button>
 
-      <div class="nav-section-label">Backend</div>
-      <button class="nav-item" data-file="open-design-backend-deep-dive.md" data-title="Backend Deep Dive" data-type="md"
-              onclick="loadDoc(this,'open-design-backend-deep-dive.md','Backend Deep Dive','md')">
-        <span class="nav-num">04</span>
-        <span class="nav-label">Backend Deep Dive</span>
+      <!-- ── Data Flows (11) ── -->
+      <div class="nav-section-label">Data Flows — 11 Flows</div>
+      <button class="nav-item" data-file="open-design-df-01-agent-spawn.mmd" data-title="DF-01 User Prompt → Agent Spawn" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-01-agent-spawn.mmd','DF-01: User Prompt → Agent Spawn')">
+        <span class="nav-num">DF01</span>
+        <span class="nav-label">User Prompt → Agent Spawn</span>
       </button>
-      <button class="nav-item" data-file="open-design-data-flow-map.md" data-title="Data Flow Map" data-type="md"
-              onclick="loadDoc(this,'open-design-data-flow-map.md','Data Flow Map','md')">
-        <span class="nav-num">05</span>
-        <span class="nav-label">Data Flow Map</span>
+      <button class="nav-item" data-file="open-design-df-02-skill-loading.mmd" data-title="DF-02 Skill Selection & Loading" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-02-skill-loading.mmd','DF-02: Skill Selection &amp; Loading')">
+        <span class="nav-num">DF02</span>
+        <span class="nav-label">Skill Selection &amp; Loading</span>
       </button>
-      <button class="nav-item" data-file="open-design-backend-reading-map.md" data-title="Backend Reading Map" data-type="md"
-              onclick="loadDoc(this,'open-design-backend-reading-map.md','Backend Reading Map','md')">
-        <span class="nav-num">06</span>
-        <span class="nav-label">Backend Reading Map</span>
+      <button class="nav-item" data-file="open-design-df-03-design-system.mmd" data-title="DF-03 Design System Selection" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-03-design-system.mmd','DF-03: Design System Selection')">
+        <span class="nav-num">DF03</span>
+        <span class="nav-label">Design System Selection</span>
+      </button>
+      <button class="nav-item" data-file="open-design-df-04-prompt-composition.mmd" data-title="DF-04 Prompt Composition (10-Layer)" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-04-prompt-composition.mmd','DF-04: Prompt Composition (10-Layer Stack)')">
+        <span class="nav-num">DF04</span>
+        <span class="nav-label">Prompt Composition</span>
+      </button>
+      <button class="nav-item" data-file="open-design-df-05-claude-stream.mmd" data-title="DF-05 claude-stream-json Execution" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-05-claude-stream.mmd','DF-05: claude-stream-json Execution')">
+        <span class="nav-num">DF05</span>
+        <span class="nav-label">claude-stream-json</span>
+      </button>
+      <button class="nav-item" data-file="open-design-df-06-acp-rpc.mmd" data-title="DF-06 ACP JSON-RPC Execution" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-06-acp-rpc.mmd','DF-06: ACP JSON-RPC Execution')">
+        <span class="nav-num">DF06</span>
+        <span class="nav-label">ACP JSON-RPC Execution</span>
+      </button>
+      <button class="nav-item" data-file="open-design-df-07-artifact-preflight.mmd" data-title="DF-07 Artifact Generation & Pre-flight" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-07-artifact-preflight.mmd','DF-07: Artifact Generation &amp; Pre-flight')">
+        <span class="nav-num">DF07</span>
+        <span class="nav-label">Artifact &amp; Pre-flight</span>
+      </button>
+      <button class="nav-item" data-file="open-design-df-08-preview-rendering.mmd" data-title="DF-08 Preview Rendering" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-08-preview-rendering.mmd','DF-08: Preview Rendering (srcdoc iframe)')">
+        <span class="nav-num">DF08</span>
+        <span class="nav-label">Preview Rendering</span>
+      </button>
+      <button class="nav-item" data-file="open-design-df-09-export.mmd" data-title="DF-09 Export Pipeline" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-09-export.mmd','DF-09: Export Pipeline')">
+        <span class="nav-num">DF09</span>
+        <span class="nav-label">Export Pipeline</span>
+      </button>
+      <button class="nav-item" data-file="open-design-df-10-byok-proxy.mmd" data-title="DF-10 BYOK Proxy" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-10-byok-proxy.mmd','DF-10: BYOK Proxy (no CLI path)')">
+        <span class="nav-num">DF10</span>
+        <span class="nav-label">BYOK Proxy</span>
+      </button>
+      <button class="nav-item" data-file="open-design-df-11-antislop-lint.mmd" data-title="DF-11 Anti-Slop Feedback Loop" data-type="mmd"
+              onclick="loadMmd(this,'open-design-df-11-antislop-lint.mmd','DF-11: Anti-Slop Feedback Loop')">
+        <span class="nav-num">DF11</span>
+        <span class="nav-label">Anti-Slop Feedback Loop</span>
       </button>
 
-      <div class="nav-section-label">Data Flows</div>
-      <button class="nav-item" data-file="open-design-flow-master.mmd" data-title="Master Data Flow" data-type="mmd"
-              onclick="loadMmd(this,'open-design-flow-master.mmd','Master Data Flow')">
-        <span class="nav-num">F0</span>
-        <span class="nav-label">Master Data Flow</span>
-      </button>
-      <button class="nav-item" data-file="open-design-flow-prompt-stack.mmd" data-title="Prompt Stack" data-type="mmd"
-              onclick="loadMmd(this,'open-design-flow-prompt-stack.mmd','Prompt Stack (10 Layers)')">
-        <span class="nav-num">F1</span>
-        <span class="nav-label">Prompt Stack</span>
-      </button>
-      <button class="nav-item" data-file="open-design-flow-agent-matrix.mmd" data-title="Agent Matrix" data-type="mmd"
-              onclick="loadMmd(this,'open-design-flow-agent-matrix.mmd','Agent Matrix (16 Agents)')">
-        <span class="nav-num">F2</span>
-        <span class="nav-label">Agent Matrix</span>
-      </button>
-      <button class="nav-item" data-file="open-design-flow-artifact-pipeline.mmd" data-title="Artifact Pipeline" data-type="mmd"
-              onclick="loadMmd(this,'open-design-flow-artifact-pipeline.mmd','Artifact Pipeline')">
-        <span class="nav-num">F3</span>
-        <span class="nav-label">Artifact Pipeline</span>
-      </button>
-      <button class="nav-item" data-file="open-design-flow-storage.mmd" data-title="Storage Architecture" data-type="mmd"
-              onclick="loadMmd(this,'open-design-flow-storage.mmd','Storage Architecture')">
-        <span class="nav-num">F4</span>
-        <span class="nav-label">Storage Architecture</span>
-      </button>
-      <button class="nav-item" data-file="open-design-sequence-diagrams.md" data-title="Sequence Diagrams" data-type="md"
-              onclick="loadDoc(this,'open-design-sequence-diagrams.md','Sequence Diagrams','md')">
-        <span class="nav-num">F5</span>
-        <span class="nav-label">Sequence Diagrams ×10</span>
-      </button>
-
-      <div class="nav-section-label">Sequence Diagrams</div>
+      <!-- ── Sequence Diagrams (10) ── -->
+      <div class="nav-section-label">Sequence Diagrams — 10 Protocols</div>
       <button class="nav-item" data-file="open-design-sd-01-claude-code.mmd" data-title="SD-01 Claude Code Path" data-type="mmd"
               onclick="loadMmd(this,'open-design-sd-01-claude-code.mmd','SD-01: Claude Code Path')">
         <span class="nav-num">SD01</span>
@@ -693,37 +717,79 @@
         <span class="nav-label">Live Artifact Refresh</span>
       </button>
 
-      <div class="nav-section-label">Agentic Platform</div>
+      <!-- ── System Charts ── -->
+      <div class="nav-section-label">System Charts</div>
+      <button class="nav-item" data-file="open-design-flow-master.mmd" data-title="Master Data Flow" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-master.mmd','Master Data Flow (All Actors)')">
+        <span class="nav-num">F0</span>
+        <span class="nav-label">Master Data Flow</span>
+      </button>
+      <button class="nav-item" data-file="open-design-flow-prompt-stack.mmd" data-title="Prompt Stack" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-prompt-stack.mmd','Prompt Stack (10 Layers)')">
+        <span class="nav-num">F1</span>
+        <span class="nav-label">Prompt Stack (10 Layers)</span>
+      </button>
+      <button class="nav-item" data-file="open-design-flow-agent-matrix.mmd" data-title="Agent Matrix" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-agent-matrix.mmd','Agent Matrix (16 Agents)')">
+        <span class="nav-num">F2</span>
+        <span class="nav-label">Agent Matrix (16 Agents)</span>
+      </button>
+      <button class="nav-item" data-file="open-design-flow-artifact-pipeline.mmd" data-title="Artifact Pipeline" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-artifact-pipeline.mmd','Artifact Pipeline')">
+        <span class="nav-num">F3</span>
+        <span class="nav-label">Artifact Pipeline</span>
+      </button>
+      <button class="nav-item" data-file="open-design-flow-storage.mmd" data-title="Storage Architecture" data-type="mmd"
+              onclick="loadMmd(this,'open-design-flow-storage.mmd','Storage Architecture')">
+        <span class="nav-num">F4</span>
+        <span class="nav-label">Storage Architecture</span>
+      </button>
+
+      <!-- ── Documentation ── -->
+      <div class="nav-section-label">Documentation</div>
+      <button class="nav-item" data-file="open-design-backend-deep-dive.md" data-title="Backend Deep Dive" data-type="md"
+              onclick="loadDoc(this,'open-design-backend-deep-dive.md','Backend Deep Dive','md')">
+        <span class="nav-num">D01</span>
+        <span class="nav-label">Backend Deep Dive</span>
+      </button>
+      <button class="nav-item" data-file="open-design-data-flow-map.md" data-title="Data Flow Map" data-type="md"
+              onclick="loadDoc(this,'open-design-data-flow-map.md','Data Flow Map (11 Flows)','md')">
+        <span class="nav-num">D02</span>
+        <span class="nav-label">Data Flow Map</span>
+      </button>
+      <button class="nav-item" data-file="open-design-backend-reading-map.md" data-title="Backend Reading Map" data-type="md"
+              onclick="loadDoc(this,'open-design-backend-reading-map.md','Backend Reading Map','md')">
+        <span class="nav-num">D03</span>
+        <span class="nav-label">Backend Reading Map</span>
+      </button>
       <button class="nav-item" data-file="open-design-agentic-platform.md" data-title="Agentic Platform" data-type="md"
               onclick="loadDoc(this,'open-design-agentic-platform.md','Agentic Platform','md')">
-        <span class="nav-num">07</span>
+        <span class="nav-num">D04</span>
         <span class="nav-label">Agentic Platform</span>
-        <span class="badge-new">NEW</span>
       </button>
-
-      <div class="nav-section-label">Design Systems &amp; Skills</div>
       <button class="nav-item" data-file="open-design-design-systems-and-skills.md" data-title="Design Systems &amp; Skills" data-type="md"
               onclick="loadDoc(this,'open-design-design-systems-and-skills.md','Design Systems &amp; Skills','md')">
-        <span class="nav-num">08</span>
+        <span class="nav-num">D05</span>
         <span class="nav-label">Design Systems &amp; Skills</span>
       </button>
-
-      <div class="nav-section-label">Developer</div>
+      <button class="nav-item" data-file="open-design-sequence-diagrams.md" data-title="Sequence Diagrams Reference" data-type="md"
+              onclick="loadDoc(this,'open-design-sequence-diagrams.md','Sequence Diagrams Reference','md')">
+        <span class="nav-num">D06</span>
+        <span class="nav-label">Sequence Diagrams Ref.</span>
+      </button>
       <button class="nav-item" data-file="open-design-developer-onboarding.md" data-title="Developer Onboarding" data-type="md"
               onclick="loadDoc(this,'open-design-developer-onboarding.md','Developer Onboarding','md')">
-        <span class="nav-num">09</span>
+        <span class="nav-num">D07</span>
         <span class="nav-label">Developer Onboarding</span>
       </button>
       <button class="nav-item" data-file="open-design-extension-points.md" data-title="Extension Points" data-type="md"
               onclick="loadDoc(this,'open-design-extension-points.md','Extension Points','md')">
-        <span class="nav-num">10</span>
+        <span class="nav-num">D08</span>
         <span class="nav-label">Extension Points</span>
       </button>
-
-      <div class="nav-section-label">Audit</div>
       <button class="nav-item" data-file="open-design-repo-audit.md" data-title="Repo Audit" data-type="md"
               onclick="loadDoc(this,'open-design-repo-audit.md','Repo Audit','md')">
-        <span class="nav-num">11</span>
+        <span class="nav-num">D09</span>
         <span class="nav-label">Repo Audit</span>
       </button>
 
@@ -810,35 +876,52 @@ function showArea(name) {
 }
 
 // ── Welcome screen ──
+// Organized by section: Overview → Data Flows → Sequence Diagrams → System Charts → Documentation
 const ARTIFACTS = [
-  { num: '00', title: 'Artifact Index', file: 'open-design-artifacts-index.md', type: 'md', desc: 'Entry point and reading order for the complete artifact set.' },
-  { num: '01', title: 'Folder Map', file: 'open-design-folder-map.md', type: 'md', desc: 'Annotated directory tree with runtime roles and key file locations.' },
-  { num: '02', title: 'Architecture Overview', file: 'open-design-architecture-overview.mmd', type: 'mmd', desc: 'Mermaid flowchart of the full static system topology.' },
-  { num: '03', title: 'Runtime Sequence', file: 'open-design-runtime-sequence.mmd', type: 'mmd', desc: 'End-to-end generation flow from user prompt to rendered preview.' },
-  { num: '04', title: 'Backend Deep Dive', file: 'open-design-backend-deep-dive.md', type: 'md', desc: 'Comprehensive deep-dive into daemon architecture and subsystems.' },
-  { num: '05', title: 'Data Flow Map', file: 'open-design-data-flow-map.md', type: 'md', desc: 'Request lifecycle, event routing, SSE buffering, and persistence.' },
-  { num: '06', title: 'Backend Reading Map', file: 'open-design-backend-reading-map.md', type: 'md', desc: 'Goal-oriented reading paths for the 10 most important source files.' },
-  { num: '07', title: 'Agentic Platform', file: 'open-design-agentic-platform.md', type: 'md', desc: 'Deep dive into all 16 agent adapters, ACP protocol, and stream parsers.', isNew: true },
-  { num: '08', title: 'Design Systems & Skills', file: 'open-design-design-systems-and-skills.md', type: 'md', desc: 'Skill frontmatter schema, craft system, and design system conventions.' },
-  { num: '09', title: 'Developer Onboarding', file: 'open-design-developer-onboarding.md', type: 'md', desc: 'Setup steps, common commands, workspace structure, and first-PR guide.' },
-  { num: '10', title: 'Extension Points', file: 'open-design-extension-points.md', type: 'md', desc: 'Step-by-step playbook for all 9 supported extension patterns.' },
-  { num: '11', title: 'Repo Audit', file: 'open-design-repo-audit.md', type: 'md', desc: 'Accuracy review, architecture risks, security areas, and next steps.' },
-  { num: 'F0', title: 'Master Data Flow', file: 'open-design-flow-master.mmd', type: 'mmd', desc: 'All actors, all paths — user, BYOK, external MCP agent — in one flowchart.', isNew: true },
-  { num: 'F1', title: 'Prompt Stack', file: 'open-design-flow-prompt-stack.mmd', type: 'mmd', desc: '10-layer prompt composition with conditions for each layer.', isNew: true },
-  { num: 'F2', title: 'Agent Matrix', file: 'open-design-flow-agent-matrix.mmd', type: 'mmd', desc: '16 agents grouped by stream format, parsers, and skill injection.', isNew: true },
-  { num: 'F3', title: 'Artifact Pipeline', file: 'open-design-flow-artifact-pipeline.mmd', type: 'mmd', desc: 'From agent stdout to lint check to srcdoc preview and export.', isNew: true },
-  { num: 'F4', title: 'Storage Architecture', file: 'open-design-flow-storage.mmd', type: 'mmd', desc: 'All write paths, 7 SQLite tables, filesystem layout, in-memory state.', isNew: true },
-  { num: 'F5', title: 'Sequence Diagrams ×10', file: 'open-design-sequence-diagrams.md', type: 'md', desc: '10 sequence diagrams with full context descriptions: Claude path, ACP, BYOK, MCP, and more.', isNew: true },
-  { num: 'SD01', title: 'Claude Code Path', file: 'open-design-sd-01-claude-code.mmd', type: 'mmd', desc: 'Full Claude Code generation turn: skill staging, 10-layer prompt, JSONL stream, lint loop.', isNew: true },
-  { num: 'SD02', title: 'ACP Agent Path', file: 'open-design-sd-02-acp-agent.mmd', type: 'mmd', desc: 'ACP JSON-RPC handshake, MCP bridge tool calls, and streaming output for Hermes/Kimi/Kiro.', isNew: true },
-  { num: 'SD03', title: 'BYOK Proxy Path', file: 'open-design-sd-03-byok-proxy.mmd', type: 'mmd', desc: 'SSRF check, API key loading, skill prompt injection, and Anthropic SSE normalization.', isNew: true },
-  { num: 'SD04', title: 'External MCP Bridge', file: 'open-design-sd-04-mcp-bridge.mmd', type: 'mmd', desc: 'External agent (Claude Code) attaching to the OD MCP server for read-only artifact access.', isNew: true },
-  { num: 'SD05', title: 'Agent Detection', file: 'open-design-sd-05-agent-detection.mmd', type: 'mmd', desc: 'Daemon startup: parallel probe of all 16 agent executables, capability parsing, model caching.', isNew: true },
-  { num: 'SD06', title: 'Skill Selection & Prompt', file: 'open-design-sd-06-skill-selection.mmd', type: 'mmd', desc: 'Skill/DS enumeration, user selection, craft loading, and 10-layer prompt composition.', isNew: true },
-  { num: 'SD07', title: 'Critique Theater', file: 'open-design-sd-07-critique-theater.mmd', type: 'mmd', desc: 'Multi-round self-critique loop: panelist scoring, composite threshold, ship/iterate decision.', isNew: true },
-  { num: 'SD08', title: 'Export Pipeline', file: 'open-design-sd-08-export-pipeline.mmd', type: 'mmd', desc: 'HTML/PDF/PPTX/ZIP/Markdown export: asset inlining, archiver, and browser download trigger.', isNew: true },
-  { num: 'SD09', title: 'Pi Agent (pi-rpc)', file: 'open-design-sd-09-pi-rpc.mmd', type: 'mmd', desc: 'Pi custom pi-rpc protocol: image validation, extension_ui auto-reply, graceful shutdown.', isNew: true },
-  { num: 'SD10', title: 'Live Artifact Refresh', file: 'open-design-sd-10-live-artifact-refresh.mmd', type: 'mmd', desc: 'Connector data fetch, BoundedJson validation, optional mini agent re-render, SSE update.', isNew: true },
+  // Overview
+  { num: '00', title: 'Artifact Index',         file: 'open-design-artifacts-index.md',            type: 'md',  section: 'Overview',    desc: 'Entry point and recommended reading order for the full documentation set.' },
+  { num: '01', title: 'Folder Map',             file: 'open-design-folder-map.md',                 type: 'md',  section: 'Overview',    desc: 'Annotated directory tree with runtime roles and key file locations.' },
+  { num: 'AR', title: 'Architecture Overview',  file: 'open-design-architecture-overview.mmd',     type: 'mmd', section: 'Overview',    desc: 'Full static system topology: User → WebUI → Daemon → AgentCLI → Artifact → Preview.' },
+  { num: 'RS', title: 'Runtime Sequence',       file: 'open-design-runtime-sequence.mmd',          type: 'mmd', section: 'Overview',    desc: 'End-to-end generation sequence from user prompt submission to rendered preview iframe.' },
+  // Data Flows
+  { num: 'DF01', title: 'User Prompt → Agent Spawn',    file: 'open-design-df-01-agent-spawn.mmd',         type: 'mmd', section: 'Data Flows', desc: 'POST /api/chat → run.create → composeSystemPrompt → spawn child process → SSE stream.' },
+  { num: 'DF02', title: 'Skill Selection & Loading',    file: 'open-design-df-02-skill-loading.mmd',       type: 'mmd', section: 'Data Flows', desc: 'listSkills → picker → skillId in SQLite → findSkillById → composeSystemPrompt layer 5.' },
+  { num: 'DF03', title: 'Design System Selection',      file: 'open-design-df-03-design-system.mmd',       type: 'mmd', section: 'Data Flows', desc: 'listDesignSystems → swatch picker → dsId in SQLite → readDesignSystem → layer 3 injection.' },
+  { num: 'DF04', title: 'Prompt Composition',           file: 'open-design-df-04-prompt-composition.mmd',  type: 'mmd', section: 'Data Flows', desc: '10-layer stack: Discovery → Base → DESIGN.md → Craft → SKILL.md → Metadata → Deck → Media → Codex → Critique.' },
+  { num: 'DF05', title: 'claude-stream-json',           file: 'open-design-df-05-claude-stream.mmd',       type: 'mmd', section: 'Data Flows', desc: 'JSONL stdout parsing: feed() → content_block_delta → text_delta / thinking_delta / tool_use.' },
+  { num: 'DF06', title: 'ACP JSON-RPC Execution',       file: 'open-design-df-06-acp-rpc.mmd',             type: 'mmd', section: 'Data Flows', desc: 'initialize → session/new → session/set_model → session/prompt → streaming notifications.' },
+  { num: 'DF07', title: 'Artifact & Pre-flight',        file: 'open-design-df-07-artifact-preflight.mmd',  type: 'mmd', section: 'Data Flows', desc: 'derivePreflight → agent reads seed → writes HTML → emits artifact tags → lint check loop.' },
+  { num: 'DF08', title: 'Preview Rendering',            file: 'open-design-df-08-preview-rendering.mmd',   type: 'mmd', section: 'Data Flows', desc: 'ArtifactParser.feed() → findOpenTag → artifact:start/chunk/end → iframe.srcdoc = fullContent.' },
+  { num: 'DF09', title: 'Export Pipeline',              file: 'open-design-df-09-export.mmd',              type: 'mmd', section: 'Data Flows', desc: 'Format dispatch: ZIP archiver · HTML inline · PDF browser print · PPTX agent-produced · batch-zip.' },
+  { num: 'DF10', title: 'BYOK Proxy',                   file: 'open-design-df-10-byok-proxy.mmd',          type: 'mmd', section: 'Data Flows', desc: 'SSRF check → API key from media-config → provider fetch → normalize SSE → forward to browser.' },
+  { num: 'DF11', title: 'Anti-Slop Feedback Loop',      file: 'open-design-df-11-antislop-lint.mmd',       type: 'mmd', section: 'Data Flows', desc: 'lintArtifact → P0 violations → renderFindingsForAgent → inject system message → self-correct.' },
+  // Sequence Diagrams
+  { num: 'SD01', title: 'Claude Code Path',      file: 'open-design-sd-01-claude-code.mmd',          type: 'mmd', section: 'Sequence Diagrams', desc: 'Full Claude Code turn: skill staging, 10-layer prompt, JSONL stream, post-generation lint.' },
+  { num: 'SD02', title: 'ACP Agent Path',        file: 'open-design-sd-02-acp-agent.mmd',            type: 'mmd', section: 'Sequence Diagrams', desc: 'ACP handshake: initialize → session/new → set_model → prompt + MCP tool calls + streaming.' },
+  { num: 'SD03', title: 'BYOK Proxy Path',       file: 'open-design-sd-03-byok-proxy.mmd',           type: 'mmd', section: 'Sequence Diagrams', desc: 'SSRF check, skill prompt injection, Anthropic SSE normalization, browser forwarding.' },
+  { num: 'SD04', title: 'External MCP Bridge',   file: 'open-design-sd-04-mcp-bridge.mmd',           type: 'mmd', section: 'Sequence Diagrams', desc: 'External Claude Code attaching to OD MCP server: list_projects, get_artifact, search_files.' },
+  { num: 'SD05', title: 'Agent Detection',       file: 'open-design-sd-05-agent-detection.mmd',      type: 'mmd', section: 'Sequence Diagrams', desc: 'Daemon startup: parallel probe of 16 executables → version, help, capability, model caching.' },
+  { num: 'SD06', title: 'Skill Selection',       file: 'open-design-sd-06-skill-selection.mmd',      type: 'mmd', section: 'Sequence Diagrams', desc: 'Skill/DS enumeration, craft loading, and 10-layer prompt composition before spawn.' },
+  { num: 'SD07', title: 'Critique Theater',      file: 'open-design-sd-07-critique-theater.mmd',     type: 'mmd', section: 'Sequence Diagrams', desc: 'Multi-round self-critique: panelist scoring, composite threshold, ship/iterate decision.' },
+  { num: 'SD08', title: 'Export (detailed)',     file: 'open-design-sd-08-export-pipeline.mmd',      type: 'mmd', section: 'Sequence Diagrams', desc: 'HTML/PDF/PPTX/ZIP/Markdown: asset inlining, archiver, browser download trigger.' },
+  { num: 'SD09', title: 'Pi Agent (pi-rpc)',     file: 'open-design-sd-09-pi-rpc.mmd',               type: 'mmd', section: 'Sequence Diagrams', desc: 'Pi custom protocol: image validation (≤10 files, 20MB), extension_ui auto-reply, graceful shutdown.' },
+  { num: 'SD10', title: 'Live Artifact Refresh', file: 'open-design-sd-10-live-artifact-refresh.mmd', type: 'mmd', section: 'Sequence Diagrams', desc: 'Connector fetch → BoundedJson validation → optional mini agent re-render → SSE update.' },
+  // System Charts
+  { num: 'F0', title: 'Master Data Flow',     file: 'open-design-flow-master.mmd',        type: 'mmd', section: 'System Charts', desc: 'All actors and all paths in one chart: user, BYOK, external MCP agent, 5 agent groups, Critique Theater.' },
+  { num: 'F1', title: 'Prompt Stack',         file: 'open-design-flow-prompt-stack.mmd',  type: 'mmd', section: 'System Charts', desc: '10-layer prompt composition flowchart with guard conditions and source file references.' },
+  { num: 'F2', title: 'Agent Matrix',         file: 'open-design-flow-agent-matrix.mmd',  type: 'mmd', section: 'System Charts', desc: '16 agents in 5 groups by stream format, with parsers and skill injection strategy.' },
+  { num: 'F3', title: 'Artifact Pipeline',    file: 'open-design-flow-artifact-pipeline.mmd', type: 'mmd', section: 'System Charts', desc: 'Agent stdout → stream parse → lint (P0/P1) → feedback loop → renderer → iframe → export.' },
+  { num: 'F4', title: 'Storage Architecture', file: 'open-design-flow-storage.mmd',       type: 'mmd', section: 'System Charts', desc: '7 SQLite tables (schema), filesystem layout, in-memory state, write/read paths, env overrides.' },
+  // Documentation
+  { num: 'D01', title: 'Backend Deep Dive',        file: 'open-design-backend-deep-dive.md',          type: 'md', section: 'Documentation', desc: 'All ~70 API routes, 7 stream parsers, SQLite schema, security model, 10 critical file analyses.' },
+  { num: 'D02', title: 'Data Flow Map',            file: 'open-design-data-flow-map.md',              type: 'md', section: 'Documentation', desc: '11 flows with entry points, files, data structures, step-by-step traces, failure modes.' },
+  { num: 'D03', title: 'Backend Reading Map',      file: 'open-design-backend-reading-map.md',        type: 'md', section: 'Documentation', desc: 'Goal-based reading paths for 9 engineering scenarios (debugging, extending, auditing…).' },
+  { num: 'D04', title: 'Agentic Platform',         file: 'open-design-agentic-platform.md',           type: 'md', section: 'Documentation', desc: '16 agent adapters, ACP/pi-rpc/plain parsers, MCP, Critique Theater, 23-step lifecycle.' },
+  { num: 'D05', title: 'Design Systems & Skills',  file: 'open-design-design-systems-and-skills.md',  type: 'md', section: 'Documentation', desc: 'DESIGN.md 9-section schema, SKILL.md frontmatter, craft slugs, pre-flight mechanism.' },
+  { num: 'D06', title: 'Sequence Diagrams Ref.',   file: 'open-design-sequence-diagrams.md',          type: 'md', section: 'Documentation', desc: 'All 10 sequence diagrams as a single reference with context descriptions for each protocol.' },
+  { num: 'D07', title: 'Developer Onboarding',     file: 'open-design-developer-onboarding.md',       type: 'md', section: 'Documentation', desc: 'Install, run, debug, First 60 Minutes reading guide, common pnpm commands.' },
+  { num: 'D08', title: 'Extension Points',         file: 'open-design-extension-points.md',           type: 'md', section: 'Documentation', desc: '9 extension patterns with conventions, risks, and validation checklists.' },
+  { num: 'D09', title: 'Repo Audit',               file: 'open-design-repo-audit.md',                 type: 'md', section: 'Documentation', desc: 'Accuracy review, 7 architecture risks, security hotspots, and recommended next steps.' },
 ];
 
 function loadWelcome(el) {
@@ -850,23 +933,32 @@ function loadWelcome(el) {
   welcome.innerHTML = `
     <div class="welcome-hero">
       <h1>Open Design — Engineering Documentation</h1>
-      <p>Twelve artifacts covering the daemon architecture, agent adapters, skill system, security model, and extension points for the Open Design repository.</p>
+      <p>38 artifacts: 11 data flow diagrams · 10 sequence diagrams · 5 system charts · 9 markdown references. Covering the daemon architecture, 16 agent adapters, skill system, security model, and all extension points.</p>
     </div>
     <div class="reading-order-notice">
       <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" style="margin-top:1px;flex-shrink:0" aria-hidden="true">
         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
       </svg>
-      <div><strong>Recommended reading order:</strong> Start with 00 (Index) for orientation, then 01 (Folder Map) for layout, then 02–03 (diagrams) for the visual architecture. For backend work, continue with 04–06. For extending the system, jump to 10 (Extension Points). The 07 Agentic Platform document is newly added and covers all 16 agent adapters in depth.</div>
+      <div><strong>Recommended starting points —</strong> <strong>New to the repo?</strong> Read AR (Architecture Overview) → RS (Runtime Sequence) → D01 (Backend Deep Dive). <strong>Tracing a specific flow?</strong> Go to Data Flows DF01–DF11 — each maps to one of the 11 flows in the Data Flow Map doc. <strong>Debugging a protocol?</strong> Sequence Diagrams SD01–SD10 trace actor-level interactions. <strong>Extending the system?</strong> Read D08 (Extension Points) + D04 (Agentic Platform).</div>
     </div>
     <div class="artifact-grid" id="artifact-grid"></div>
   `;
 
   const grid = document.getElementById('artifact-grid');
+  let currentSection = null;
   ARTIFACTS.forEach(a => {
+    // Inject section header when section changes
+    if (a.section !== currentSection) {
+      currentSection = a.section;
+      const hdr = document.createElement('div');
+      hdr.className = 'grid-section-header';
+      hdr.textContent = a.section;
+      grid.appendChild(hdr);
+    }
     const card = document.createElement('div');
-    card.className = 'artifact-card' + (a.isNew ? ' card-new' : '');
+    card.className = 'artifact-card';
     card.innerHTML = `
-      <div class="card-num">${a.num}${a.isNew ? ' &nbsp;<span style="color:var(--coral);font-weight:700;font-family:\'DM Sans\',sans-serif;font-size:10px;letter-spacing:.06em;text-transform:uppercase">NEW</span>' : ''}</div>
+      <div class="card-num">${a.num}</div>
       <div class="card-title">${a.title}</div>
       <div class="card-desc">${a.desc}</div>
       <span class="card-type">${a.type === 'mmd' ? 'mermaid' : 'markdown'}</span>

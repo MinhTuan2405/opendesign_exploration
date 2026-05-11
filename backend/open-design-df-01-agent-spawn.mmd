@@ -1,0 +1,20 @@
+flowchart TD
+    A["Browser\nPOST /api/chat\nprojectId · agentId · prompt · model"]
+    B["Daemon: runs.create()\nstatus:queued — in-memory run record\nSSE stream opened → event:start to browser"]
+    C["SQLite: SELECT project\nskill_id · design_system_id · metadata"]
+    D["composeSystemPrompt()\n10-layer system prompt string\n2k–20k characters"]
+    E["stageActiveSkill()\nskill folder copied to CWD\n.od/projects/id/.od-skills/skillId/"]
+    F["buildArgs() + spawnEnvForAgent()\nargv array (prompt via -p or stdin)\nOD_DAEMON_URL · OD_PROJECT_ID · OD_PROJECT_DIR"]
+    G["child_process.spawn(cli, args)\ncwd: .od/projects/id/\nstdout piped to stream handler"]
+    H["Stream handler attached to child stdout\nclaudeStreamHandler / acpSession / piRpcSession\nbased on agent streamFormat"]
+    I["runs.emit(event)\nSSE push to all connected browser clients"]
+    OUT["Browser receives SSE events\ntext_delta · thinking_delta\ntool_use · tool_result · usage · end"]
+
+    A --> B --> C --> D & E
+    D --> F
+    E --> F
+    F --> G --> H --> I --> OUT
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style G fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style OUT fill:#e8f5e9,stroke:#2e7d32,color:#1a1916

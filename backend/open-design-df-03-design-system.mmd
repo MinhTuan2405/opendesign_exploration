@@ -1,0 +1,14 @@
+flowchart LR
+    A["GET /api/design-systems"] --> B["listDesignSystems(DS_DIR)"]
+    B --> C["parse DESIGN.md\ntitle · category · swatches · body"]
+    C --> D["extractSwatches()\nup to 4 hex colors\nbg · support · fg · accent"]
+    D --> E["picker with color swatch strips\ngrouped by category"]
+    E --> F["user selects design system"]
+    F --> G["designSystemId stored in SQLite\nPATCH /api/projects/:id"]
+    G --> H["on generation: readDesignSystem()\nfull DESIGN.md re-read each turn"]
+    H --> I["designSystemBody resolved"]
+    I --> J["composeSystemPrompt()\nlayer 3 — authoritative brand tokens\ncolor · typography · spacing"]
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style G fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style J fill:#e8f5e9,stroke:#2e7d32,color:#1a1916

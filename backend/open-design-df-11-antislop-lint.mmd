@@ -1,0 +1,28 @@
+flowchart TD
+    A["artifact:end fires\nfullContent available in ArtifactParser"]
+    B["POST /api/artifacts/save\nartifact body submitted to daemon"]
+    C["lintArtifact(rawHtml)\napps/daemon/src/lint-artifact.ts\ngrep-style regex scan"]
+    D{"P0 findings?"}
+
+    P0["P0 Anti-Slop Violations\npurple-gradient — violet/indigo + linear-gradient\ntrust-gradient — blue→cyan two-stop\nai-default-indigo — solid indigo on buttons\nemoji-icon — emoji used as feature icon\nlorem-filler — lorem ipsum text\ninvented-metric — round percentage claims\nfiller-copy — generic filler text patterns\nscroll-into-view — JS scroll hacks\nslide-theme-missing — deck missing theme\nall-caps-no-tracking — no letter-spacing"]
+
+    P12["P1/P2 Advisories only\nexternal-image · raw-hex-color\naccent-overuse · missing-section-anchor\nslide-rhythm"]
+
+    G["renderFindingsForAgent(findings)\nMarkdown block: id · message · fix · snippet"]
+    H["lint-feedback injected as system message\nnext conversation turn context"]
+    I["Agent reads lint-feedback\nself-corrects — emits new artifact"]
+
+    K["findings stored\nGET /api/artifacts/lint\nUI renders P0/P1/P2 badge counts"]
+
+    A --> B --> C --> D
+    D -- "P0 found" --> P0 --> G --> H --> I --> A
+    D -- "P1/P2 only" --> P12 --> K
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style C fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style D fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style P0 fill:#fde8e8,stroke:#c0392b,color:#1a1916
+    style P12 fill:#f3f0e8,stroke:#706d65,color:#1a1916
+    style G fill:#faece7,stroke:#c96442,color:#1a1916
+    style I fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style K fill:#f3f0e8,stroke:#706d65,color:#1a1916

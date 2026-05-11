@@ -12,7 +12,7 @@ sequenceDiagram
         Note over Browser,SkillRegistry: Skill enumeration
         Browser->>Daemon: GET /api/skills
         Daemon->>SkillRegistry: listSkills(SKILLS_DIR)
-        SkillRegistry->>SkillRegistry: scans skills/<folder>/SKILL.md, parses frontmatter
+        SkillRegistry->>SkillRegistry: scans skills/{folder}/SKILL.md, parses frontmatter
         SkillRegistry-->>Daemon: [{ id, name, mode, scenario, platform, featured, previewType, ... }]
         Daemon-->>Browser: skills array
         Browser->>Browser: renders skill picker (grouped by scenario)
@@ -22,7 +22,7 @@ sequenceDiagram
         Note over Browser,DSRegistry: Design system enumeration
         Browser->>Daemon: GET /api/design-systems
         Daemon->>DSRegistry: listDesignSystems(DS_DIR)
-        DSRegistry->>DSRegistry: scans design-systems/<folder>/DESIGN.md<br/>extracts title / category / swatches
+        DSRegistry->>DSRegistry: scans design-systems/{folder}/DESIGN.md — extracts title / category / swatches
         DSRegistry-->>Daemon: [{ id, title, category, swatches, ... }]
         Daemon-->>Browser: design systems array
         Browser->>Browser: renders DS picker with color swatches
@@ -38,7 +38,7 @@ sequenceDiagram
         Daemon->>DSRegistry: readDesignSystem(dsId)
         DSRegistry-->>Daemon: full DESIGN.md body
         Daemon->>CraftLoader: loadCraftSections(skill.craftRequires)
-        CraftLoader->>CraftLoader: resolves craft/<section>.md files from craft/ dir
+        CraftLoader->>CraftLoader: resolves craft/{section}.md files from craft/ dir
         CraftLoader-->>Daemon: concatenated craft body
 
         Daemon->>PromptComposer: composeSystemPrompt(skill, ds, craft, metadata, opts)

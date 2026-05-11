@@ -1,0 +1,27 @@
+flowchart TD
+    A["Daemon: child_process.spawn\n--output-format stream-json --verbose\n--include-partial-messages (if capability-flagged)"]
+    B["Agent stdout: JSONL stream\nline-delimited JSON objects"]
+    C["handler.feed(chunk)\nbuffer accumulates chunks\nnewline splits → JSON.parse per line"]
+    D["handleObject(obj)\ndispatch on obj.type"]
+
+    E["type:system\n→ status event (initializing)"]
+    F["stream_event content_block_delta type:text\n→ text_delta (incremental)"]
+    G["stream_event content_block_delta type:thinking\n→ thinking_delta"]
+    H["stream_event input_json_delta\n→ accumulate tool input in blocks Map\ncontent_block_stop → finalize → tool_use event"]
+    I["type:tool_result\n→ tool_result event"]
+    J["type:result\n→ usage event\ninput_tokens · output_tokens · cache · cost_usd"]
+
+    K["runs.emit(event)\nSSE push to all connected clients"]
+    L["Process exit code 0\nruns.finish(succeeded)"]
+    M["Process exit code ≠ 0\nruns.finish(failed, exitCode)"]
+
+    A --> B --> C --> D
+    D --> E & F & G & H & I & J
+    E & F & G & H & I & J --> K
+    A --> L & M
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style D fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style K fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style L fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style M fill:#fde8e8,stroke:#c0392b,color:#1a1916

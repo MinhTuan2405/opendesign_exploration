@@ -9,7 +9,7 @@ sequenceDiagram
     Note over ExtAgent,MCPServer: Developer runs: claude --mcp-server od:npx od mcp
 
     ExtAgent->>MCPServer: MCP tools/list
-    MCPServer-->>ExtAgent: tool schemas (list_projects, get_active_context, get_artifact,<br/>get_project, get_file, search_files, list_files, + 3 resources)
+    MCPServer-->>ExtAgent: 8 tools — list_projects, get_active_context, get_artifact, get_project, get_file, search_files, list_files + 3 resources
 
     rect rgb(230, 240, 255)
         Note over ExtAgent,MCPServer: Project discovery

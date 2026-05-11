@@ -1,0 +1,21 @@
+flowchart TD
+    A["Daemon: child_process.spawn\nHermes / Kimi / Kiro / Kilo / Devin / vibe-acp\ncwd: .od/projects/id/"]
+    B["stdin: initialize\nparams: protocolVersion 1\nstdout: capabilities object"]
+    C["stdin: session/new\nparams: cwd · mcpServers config\nstdout: sessionId string"]
+    D["stdin: session/set_model\nparams: model name\nstdout: ok true"]
+    E["stdin: session/prompt\nparams: systemPrompt + userPrompt\n(composed 10-layer string)"]
+    F{"Agent tool calls\nrequested?"}
+    G["MCP Bridge: tools/call\nsearch_files / get_file / get_artifact\nDaemon HTTP → filesystem BFS"]
+    H["Tool result returned to agent\nvia MCP JSON-RPC response"]
+    I["stdout notifications\nagent_message_chunk → text_delta\nagent_thought_chunk → thinking_delta"]
+    J["runs.emit(event)\nSSE push to Browser"]
+    K["session/close or process exit\nruns.finish(succeeded)\nstageTimeoutMs: 180s enforced"]
+
+    A --> B --> C --> D --> E --> F
+    F -- yes --> G --> H --> F
+    F -- no --> I --> J --> K
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style E fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style J fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style K fill:#e8f5e9,stroke:#2e7d32,color:#1a1916

@@ -1,0 +1,15 @@
+flowchart LR
+    A["GET /api/skills"] --> B["listSkills(SKILLS_DIR)"]
+    B --> C["parse SKILL.md frontmatter\nid / name / mode / scenario / craft"]
+    C --> D["grouped picker by scenario\noperations · design · engineering"]
+    D --> E["user selects skill"]
+    E --> F["skillId stored in SQLite\nPATCH /api/projects/:id"]
+    F --> G["on generation: findSkillById()\nalias resolution applied"]
+    G --> H["skillBody resolved\nSKILL.md + references/*.md"]
+    H --> I["composeSystemPrompt()\nlayer 5 — preflight + skill body"]
+    I --> J["stageActiveSkill()\n.od-skills/skillId/ staged in CWD"]
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style F fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style I fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style J fill:#faece7,stroke:#c96442,color:#1a1916

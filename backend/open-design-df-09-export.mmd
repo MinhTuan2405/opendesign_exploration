@@ -1,0 +1,30 @@
+flowchart LR
+    A["User clicks Export\n(selects format)"] --> B{"format?"}
+
+    B -- "zip" --> C["GET /api/projects/:id/export\n?format=zip"]
+    C --> D["buildProjectArchive(projectDir)\narchiver package → zip buffer"]
+    D --> E["HTTP 200 Content-Disposition: attachment\nfilename=project-name.zip"]
+
+    B -- "batch-zip" --> F["POST /api/projects/batch/export\n{ projectIds: [...] }"]
+    F --> G["buildBatchArchive()\nmulti-project ZIP with subdirs"]
+    G --> E
+
+    B -- "html" --> H["readProjectFile(projectDir, filename)\nserve single-file artifact inline"]
+    H --> I["HTTP 200 text/html\nself-contained single file"]
+
+    B -- "pdf" --> J["browser triggers window.print()\non preview iframe"]
+    J --> K["print stylesheet from deck framework\nor skill-defined @print rules"]
+    K --> L["browser generates PDF client-side\n(no daemon involvement)"]
+
+    B -- "pptx" --> M["agent-produced .pptx in project CWD\n.od/projects/id/output.pptx"]
+    M --> N["daemon serves file download\nGET /api/projects/:id/files/:filename"]
+    N --> E
+
+    B -- "markdown" --> O["readProjectFile() or skill-defined render"]
+    O --> P["HTTP 200 text/markdown\ndirect copy or transformed output"]
+
+    style A fill:#1c2333,stroke:#1c2333,color:#ffffff
+    style B fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style E fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style L fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style P fill:#e8f5e9,stroke:#2e7d32,color:#1a1916

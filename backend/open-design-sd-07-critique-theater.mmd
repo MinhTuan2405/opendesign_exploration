@@ -18,7 +18,7 @@ sequenceDiagram
         AgentCLI->>Parser: emits ROUND n=1
 
         Note over AgentCLI,Parser: [Uncertain] Exact panelist XML tag format
-        AgentCLI->>Parser: emits PANELIST role=designer<br/>  SCORE dim=philosophy → 8<br/>  SCORE dim=hierarchy → 7<br/>  SCORE dim=detail → 6<br/>  SCORE dim=function → 9<br/>  SCORE dim=innovation → 7
+        AgentCLI->>Parser: emits PANELIST scores — philosophy:8, hierarchy:7, detail:6, function:9, innovation:7
 
         Parser->>CritiqueOrch: panelist_open → panelist_dim events → panelist_close
         CritiqueOrch->>CritiqueOrch: computes composite score (daemon-authoritative weighted avg)

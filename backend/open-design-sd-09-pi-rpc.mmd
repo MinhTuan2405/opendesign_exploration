@@ -6,7 +6,7 @@ sequenceDiagram
     participant PiCLI as Pi CLI Process
 
     Browser->>Daemon: POST /api/chat { agentId:'pi', prompt, model, images:[] }
-    Daemon->>PiCLI: child_process.spawn('pi', args, { cwd:.od/projects/<id>/ })
+    Daemon->>PiCLI: child_process.spawn('pi', args, { cwd:.od/projects/{id}/ })
     Daemon->>PiRpc: attachPiRpcSession({ child, prompt, model, imagePaths })
 
     rect rgb(230, 240, 255)

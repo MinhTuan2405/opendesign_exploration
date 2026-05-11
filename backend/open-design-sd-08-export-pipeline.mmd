@@ -7,9 +7,9 @@ sequenceDiagram
     participant ExportHandler
 
     User->>Browser: clicks Export (selects format)
-    Browser->>Daemon: POST /api/projects/:id/files/:filename/export?format=<fmt>
+    Browser->>Daemon: POST /api/projects/{id}/files/{filename}/export?format={fmt}
 
-    Daemon->>FileSystem: read artifact from .od/projects/<id>/<filename>
+    Daemon->>FileSystem: read artifact from .od/projects/{id}/{filename}
     FileSystem-->>Daemon: raw HTML content
 
     Daemon->>ExportHandler: dispatch on format
@@ -46,5 +46,5 @@ sequenceDiagram
         ExportHandler-->>Daemon: Markdown string
     end
 
-    Daemon->>Browser: HTTP 200 { Content-Disposition: attachment; filename=<name>.<ext>, body: buffer }
+    Daemon->>Browser: HTTP 200 attachment (filename name.ext)
     Browser->>Browser: triggers native file download dialog

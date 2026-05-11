@@ -1,0 +1,20 @@
+flowchart TD
+    A["Browser\nPOST /api/proxy/anthropic/stream\nbaseUrl · apiKey · model · messages · systemPrompt"]
+    B["Validate required fields\nmissing baseUrl / apiKey / model → HTTP 400"]
+    C["validateExternalApiBaseUrl(baseUrl)\nSSRF check — block private IP ranges\n10.x / 172.16-31.x / 192.168.x / 169.254.x → HTTP 403"]
+    D["Read API key from .od/media-config.json\ndecrypted at runtime\nnever logged"]
+    E{"provider route"}
+    F["POST api.anthropic.com/v1/messages\nstream:true\nx-api-key header"]
+    G["POST OpenAI / Azure / Google endpoint\nappendVersionedApiPath()\nAuthorization: Bearer header"]
+    H["Upstream SSE stream response\nprovider-specific format"]
+    I["Normalize to OD common SSE format\ndelta / end / error events\nauth tokens redacted from error logs"]
+    J["Browser: normalized SSE stream\ntext_delta events feed ArtifactParser\nartifact:start / chunk / end → iframe preview"]
+
+    A --> B --> C --> D --> E
+    E -- anthropic --> F --> H
+    E -- openai / azure / google --> G --> H
+    H --> I --> J
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style C fill:#fde8e8,stroke:#c0392b,color:#1a1916
+    style J fill:#e8f5e9,stroke:#2e7d32,color:#1a1916

@@ -1,0 +1,30 @@
+flowchart TD
+    IN["composeSystemPrompt(ComposeInput)\napps/daemon/src/prompts/system.ts"]
+
+    L1["Layer 1 · DISCOVERY_AND_PHILOSOPHY\ndiscovery.ts — always present\nturn-1 form syntax · brand-spec extraction · TodoWrite"]
+    L2["Layer 2 · BASE_SYSTEM_PROMPT\nofficial-system.ts — always present\nidentity · workflow · content-philosophy charter"]
+    L3["Layer 3 · designSystemBody\nDESIGN.md — if designSystemBody non-empty\nauthoritative brand tokens win on token values"]
+    L4["Layer 4 · craftBody\nloadCraftSections() — if craftBody non-empty\ngoverned by brand DESIGN.md above"]
+    L5["Layer 5 · derivePreflight() + skillBody\nSKILL.md — if skillBody non-empty\npre-flight Read directive + workflow"]
+    L6["Layer 6 · renderMetadataBlock()\nif metadata non-empty\nproject intent · fidelity · template snapshots"]
+    L7["Layer 7 · DECK_FRAMEWORK_DIRECTIVE\nif mode=deck AND no template.html seed\nnav/counter/scroll/print stylesheet contract"]
+    L8["Layer 8 · MEDIA_GENERATION_CONTRACT\nif mode = image | video | audio\ngoverned od media generate contract"]
+    L9["Layer 9 · Codex imagegen override\nif agentId=codex AND gpt-image-* model\nuse built-in imagegen instead of CLI"]
+    L10["Layer 10 · critique theater addendum\nif critique.enabled AND not media surface\nrenderPanelPrompt() — pinned last"]
+
+    OUT["parts.join('') → final system prompt\ntypically 2k–20k characters"]
+
+    IN --> L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7 --> L8 --> L9 --> L10 --> OUT
+
+    style IN fill:#1c2333,stroke:#1c2333,color:#ffffff
+    style L1 fill:#faece7,stroke:#c96442,color:#1a1916
+    style L2 fill:#faece7,stroke:#c96442,color:#1a1916
+    style L3 fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style L4 fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style L5 fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style L6 fill:#f3f0e8,stroke:#706d65,color:#1a1916
+    style L7 fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style L8 fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style L9 fill:#f0e6fb,stroke:#7b2d8b,color:#1a1916
+    style L10 fill:#fde8e8,stroke:#c0392b,color:#1a1916
+    style OUT fill:#1c2333,stroke:#1c2333,color:#ffffff

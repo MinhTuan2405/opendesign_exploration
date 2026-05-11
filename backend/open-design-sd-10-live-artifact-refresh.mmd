@@ -22,7 +22,7 @@ sequenceDiagram
 
     rect rgb(230, 240, 255)
         Note over Daemon,FileSystem: Template & data loading
-        Daemon->>FileSystem: read template.html from .od/projects/<id>/.live-artifacts/<artifactId>/
+        Daemon->>FileSystem: read template.html from .od/projects/{id}/.live-artifacts/{artifactId}/
         FileSystem-->>Daemon: template HTML
     end
 
@@ -40,7 +40,7 @@ sequenceDiagram
         Note over Daemon: Data validation
         Daemon->>Daemon: validate against BoundedJsonConstraints
         Note over Daemon: max 256KB, depth 8, key count limits, no circular refs
-        Daemon->>FileSystem: write updated data.json to .live-artifacts/<artifactId>/
+        Daemon->>FileSystem: write updated data.json to .live-artifacts/{artifactId}/
     end
 
     alt refresh requires agent re-render
