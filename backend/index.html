@@ -223,6 +223,23 @@
     padding: 40px 48px 80px;
     width: 100%;
   }
+  #content-area.diagram-mode {
+    max-width: none;
+    margin: 0;
+    padding: 18px 20px 24px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  #content-area.diagram-mode.dataflow-mode {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 48px 80px;
+    flex: initial;
+    min-height: auto;
+    display: block;
+  }
 
   /* ── Welcome screen ── */
   #welcome { }
@@ -308,13 +325,28 @@
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+    padding: 18px;
+    overflow: hidden;
+    min-height: 0;
+  }
+  #content-area.diagram-mode #mmd-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  #content-area.diagram-mode.dataflow-mode #mmd-area {
+    display: block;
+    flex: initial;
+    min-height: auto;
     padding: 32px 24px;
-    overflow-x: auto;
   }
   #mmd-title {
     font-family: 'Lora', serif;
     font-size: 20px; font-weight: 600;
     color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+  #content-area.diagram-mode.dataflow-mode #mmd-title {
     margin-bottom: 20px;
   }
   #mmd-loading {
@@ -322,6 +354,44 @@
     padding: 60px 0;
     color: var(--text-muted);
     font-size: 14px;
+  }
+  #mmd-render { min-width: 0; }
+  #content-area.diagram-mode #mmd-render {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+  #content-area.diagram-mode.dataflow-mode #mmd-render {
+    display: block;
+    flex: initial;
+    min-height: auto;
+  }
+  .diagram-fit {
+    overflow: auto;
+    width: 100%;
+    max-height: calc(100vh - 190px);
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: rgba(243,240,232,0.24);
+    text-align: center;
+  }
+  #content-area.diagram-mode .diagram-fit {
+    flex: 1;
+    max-height: none;
+    min-height: 0;
+  }
+  #content-area.diagram-mode.dataflow-mode .diagram-fit {
+    flex: initial;
+    max-height: calc(100vh - 230px);
+    min-height: auto;
+    padding: 18px;
+  }
+  .diagram-fit svg {
+    display: inline-block;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
   }
 
   /* ── Markdown content ── */
@@ -464,8 +534,17 @@
     border-radius: var(--radius);
     padding: 24px;
     margin: 20px 0;
-    overflow-x: auto;
-    text-align: center;
+    overflow: visible;
+  }
+  #md-content .mermaid-block .diagram-fit {
+    max-height: none;
+    overflow: auto;
+    text-align: left;
+  }
+  #md-content .mermaid-block .diagram-fit svg {
+    width: auto !important;
+    min-width: 100%;
+    max-width: none !important;
   }
 
   /* ── Grid section headers ── */
@@ -533,12 +612,15 @@
   /* ── Responsive ── */
   @media (max-width: 900px) {
     #content-area { padding: 28px 24px 60px; }
+    #content-area.diagram-mode { padding: 12px; }
+    #content-area.diagram-mode.dataflow-mode { padding: 28px 24px 60px; }
     #footer { padding: 12px 24px; }
   }
   @media (max-width: 640px) {
     #sidebar { display: none; }
     #header-pills { display: none; }
     #header-github { display: none; }
+    .diagram-fit { padding: 10px; }
   }
 </style>
 </head>
@@ -827,11 +909,22 @@
 // ── State ──
 let activeNavEl = null;
 let mermaidReady = false;
+let renderRunId = 0;
+let welcomeRendered = false;
+let navIndex = null;
+
+const elementCache = new Map();
+const fetchCache = new Map();
+const markdownCache = new Map();
+const mermaidSvgCache = new Map();
+const mermaidPendingCache = new Map();
 
 // ── Mermaid init ──
 mermaid.initialize({
   startOnLoad: false,
   theme: 'default',
+  flowchart: { useMaxWidth: true },
+  sequence: { useMaxWidth: true },
   themeVariables: {
     fontFamily: "'DM Sans', system-ui, sans-serif",
     fontSize: '13px',
@@ -851,15 +944,37 @@ marked.setOptions({
   gfm: true,
 });
 
+const markdownRenderer = new marked.Renderer();
+let activeMarkdownScope = 'markdown';
+let activeMermaidIndex = 0;
+
+markdownRenderer.code = function(tokenOrCode, infostring) {
+  const code = typeof tokenOrCode === 'object' && tokenOrCode !== null
+    ? tokenOrCode.text || ''
+    : tokenOrCode || '';
+  const rawLang = typeof tokenOrCode === 'object' && tokenOrCode !== null
+    ? tokenOrCode.lang || ''
+    : infostring || '';
+  const lang = String(rawLang).trim().split(/\s+/)[0].toLowerCase();
+
+  if (lang === 'mermaid') {
+    const index = activeMermaidIndex++;
+    const key = `${activeMarkdownScope}:inline:${index}:${hashString(code)}`;
+    return `<div class="mermaid-block" data-mmd-key="${escapeAttr(key)}" data-mmd-code="${escapeAttr(code)}"><div style="color:var(--text-muted);font-size:13px;padding:20px">Rendering diagram…</div></div>`;
+  }
+
+  const langClass = lang ? ` class="language-${escapeHtml(lang)}"` : '';
+  return `<pre><code${langClass}>${escapeHtml(code)}</code></pre>`;
+};
+
+marked.use({ renderer: markdownRenderer });
+
 // ── Nav filter ──
 function filterNav(q) {
   const query = q.toLowerCase().trim();
-  document.querySelectorAll('.nav-item').forEach(btn => {
-    if (!query) { btn.classList.remove('hidden'); return; }
-    const label = (btn.querySelector('.nav-label')?.textContent || '').toLowerCase();
-    const num = (btn.querySelector('.nav-num')?.textContent || '').toLowerCase();
-    const file = (btn.dataset.file || '').toLowerCase();
-    btn.classList.toggle('hidden', !label.includes(query) && !num.includes(query) && !file.includes(query));
+  getNavIndex().forEach(item => {
+    if (!query) { item.el.classList.remove('hidden'); return; }
+    item.el.classList.toggle('hidden', !item.searchText.includes(query));
   });
 }
 
@@ -870,8 +985,11 @@ function setActive(el) {
 }
 
 function showArea(name) {
+  const contentArea = byId('content-area');
+  contentArea.classList.toggle('diagram-mode', name === 'mmd-area');
+  contentArea.classList.remove('dataflow-mode');
   ['welcome','md-area','mmd-area'].forEach(id => {
-    document.getElementById(id).style.display = id === name ? '' : 'none';
+    byId(id).style.display = id === name ? '' : 'none';
   });
 }
 
@@ -925,11 +1043,18 @@ const ARTIFACTS = [
 ];
 
 function loadWelcome(el) {
+  nextRenderRun();
   if (el) setActive(el);
   showArea('welcome');
-  document.getElementById('footer-file').textContent = 'index.html';
+  byId('footer-file').textContent = 'index.html';
 
-  const welcome = document.getElementById('welcome');
+  const welcome = byId('welcome');
+  if (welcomeRendered) {
+    byId('main').scrollTop = 0;
+    return;
+  }
+
+  welcomeRendered = true;
   welcome.innerHTML = `
     <div class="welcome-hero">
       <h1>Open Design — Engineering Documentation</h1>
@@ -944,7 +1069,7 @@ function loadWelcome(el) {
     <div class="artifact-grid" id="artifact-grid"></div>
   `;
 
-  const grid = document.getElementById('artifact-grid');
+  const grid = byId('artifact-grid');
   let currentSection = null;
   ARTIFACTS.forEach(a => {
     // Inject section header when section changes
@@ -979,95 +1104,198 @@ function showWelcome(e) {
 
 // ── Markdown loader ──
 async function loadDoc(navEl, filename, title, type) {
+  const runId = nextRenderRun();
   setActive(navEl);
   showArea('md-area');
-  document.getElementById('footer-file').textContent = filename;
-  const content = document.getElementById('md-content');
+  byId('footer-file').textContent = filename;
+  const content = byId('md-content');
   content.innerHTML = '<div class="loading-msg">Loading…</div>';
 
   try {
-    const res = await fetch(filename);
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    const text = await res.text();
-    const rendered = await renderMarkdown(text);
+    const text = await fetchText(filename);
+    if (!isCurrentRun(runId)) return;
+
+    const rendered = renderMarkdownCached(filename, text);
+    if (!isCurrentRun(runId)) return;
+
     content.innerHTML = rendered;
-    // Syntax highlight
-    content.querySelectorAll('pre code').forEach(block => {
-      // Skip mermaid blocks — they are handled separately
-      if (!block.closest('.mermaid-block')) {
-        hljs.highlightElement(block);
-      }
-    });
-    // Render mermaid blocks
-    const mmdBlocks = content.querySelectorAll('.mermaid-block');
-    if (mmdBlocks.length > 0 && mermaidReady) {
-      for (let i = 0; i < mmdBlocks.length; i++) {
-        const block = mmdBlocks[i];
-        const code = block.dataset.mmdCode;
-        try {
-          const id = 'mmd-inline-' + Date.now() + '-' + i;
-          const { svg } = await mermaid.render(id, code);
-          block.innerHTML = svg;
-        } catch (err) {
-          block.innerHTML = `<pre style="color:#c0392b;font-size:12px">${escapeHtml(err.message)}</pre>`;
-        }
-      }
-    }
-    // Scroll to top
-    document.getElementById('main').scrollTop = 0;
+    highlightCodeBlocks(content);
+    await renderInlineMermaidBlocks(content, runId);
+
+    if (!isCurrentRun(runId)) return;
+    byId('main').scrollTop = 0;
   } catch (err) {
+    if (!isCurrentRun(runId)) return;
     content.innerHTML = `<div class="error-msg"><strong>Could not load ${escapeHtml(filename)}</strong><br>${escapeHtml(err.message)}<br><br>Make sure this page is served over HTTP (not file://) and that the file exists in the same directory as index.html.</div>`;
   }
 }
 
 // ── Mermaid loader ──
 async function loadMmd(navEl, filename, title) {
+  const runId = nextRenderRun();
   setActive(navEl);
   showArea('mmd-area');
-  document.getElementById('footer-file').textContent = filename;
-  document.getElementById('mmd-title').textContent = title;
-  const loading = document.getElementById('mmd-loading');
-  const render = document.getElementById('mmd-render');
+  byId('content-area').classList.toggle('dataflow-mode', isDataFlowDiagram(filename));
+  byId('footer-file').textContent = filename;
+  byId('mmd-title').textContent = title;
+  const loading = byId('mmd-loading');
+  const render = byId('mmd-render');
   loading.style.display = '';
   render.innerHTML = '';
 
   try {
-    const res = await fetch(filename);
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    const code = await res.text();
+    const code = await fetchText(filename);
+    if (!isCurrentRun(runId)) return;
+
+    const key = `main:${filename}:${hashString(code)}`;
+    const svg = await renderMermaidSvg(code, key);
+    if (!isCurrentRun(runId)) return;
+
     loading.style.display = 'none';
-    const id = 'mmd-main-' + Date.now();
-    const { svg } = await mermaid.render(id, code.trim());
-    render.innerHTML = svg;
-    document.getElementById('main').scrollTop = 0;
+    mountFitDiagram(render, svg);
+    byId('main').scrollTop = 0;
   } catch (err) {
+    if (!isCurrentRun(runId)) return;
     loading.style.display = 'none';
     render.innerHTML = `<div class="error-msg"><strong>Could not render ${escapeHtml(filename)}</strong><br>${escapeHtml(err.message)}<br><br>Make sure this page is served over HTTP and the .mmd file exists.</div>`;
   }
 }
 
-// ── Markdown renderer with mermaid interception ──
-async function renderMarkdown(text) {
-  // Custom renderer to intercept mermaid code blocks
-  const renderer = new marked.Renderer();
-  const mermaidBlocks = [];
+// ── Markdown / diagram render engine ──
+function renderMarkdown(text, scope = 'markdown') {
+  activeMarkdownScope = scope;
+  activeMermaidIndex = 0;
+  try {
+    return marked.parse(text);
+  } finally {
+    activeMarkdownScope = 'markdown';
+    activeMermaidIndex = 0;
+  }
+}
 
-  renderer.code = function(code, lang) {
-    if (lang === 'mermaid') {
-      const idx = mermaidBlocks.length;
-      mermaidBlocks.push(code);
-      return `<div class="mermaid-block" data-mmd-index="${idx}" data-mmd-code="${escapeAttr(code)}"><div style="color:var(--text-muted);font-size:13px;padding:20px">Rendering diagram…</div></div>`;
+function renderMarkdownCached(filename, text) {
+  const hash = hashString(text);
+  const cached = markdownCache.get(filename);
+  if (cached && cached.hash === hash) return cached.html;
+
+  const html = renderMarkdown(text, `md:${filename}:${hash}`);
+  markdownCache.set(filename, { hash, html });
+  return html;
+}
+
+async function renderInlineMermaidBlocks(container, runId) {
+  const blocks = Array.from(container.querySelectorAll('.mermaid-block'));
+  if (!blocks.length || !mermaidReady) return;
+
+  for (const block of blocks) {
+    if (!isCurrentRun(runId)) return;
+
+    const code = block.dataset.mmdCode || '';
+    const key = block.dataset.mmdKey || `inline:${hashString(code)}`;
+    try {
+      const svg = await renderMermaidSvg(code, key);
+      if (!isCurrentRun(runId)) return;
+      mountFitDiagram(block, svg);
+    } catch (err) {
+      if (!isCurrentRun(runId)) return;
+      block.innerHTML = `<pre style="color:#c0392b;font-size:12px">${escapeHtml(err.message)}</pre>`;
     }
-    // Dark code block
-    const langClass = lang ? ` class="language-${escapeHtml(lang)}"` : '';
-    return `<pre><code${langClass}>${escapeHtml(code)}</code></pre>`;
-  };
+  }
+}
 
-  marked.use({ renderer });
-  return marked.parse(text);
+async function renderMermaidSvg(code, cacheKey) {
+  const normalized = code.trim();
+  const key = cacheKey || `mmd:${hashString(normalized)}`;
+
+  if (mermaidSvgCache.has(key)) return mermaidSvgCache.get(key);
+  if (mermaidPendingCache.has(key)) return mermaidPendingCache.get(key);
+
+  const pending = Promise.resolve()
+    .then(() => mermaid.render(`mmd-${hashString(key)}`, normalized))
+    .then(({ svg }) => {
+      mermaidSvgCache.set(key, svg);
+      mermaidPendingCache.delete(key);
+      return svg;
+    })
+    .catch(err => {
+      mermaidPendingCache.delete(key);
+      throw err;
+    });
+
+  mermaidPendingCache.set(key, pending);
+  return pending;
+}
+
+function highlightCodeBlocks(container) {
+  container.querySelectorAll('pre code').forEach(block => {
+    if (!block.closest('.mermaid-block')) hljs.highlightElement(block);
+  });
+}
+
+function mountFitDiagram(container, svg) {
+  container.innerHTML = `<div class="diagram-fit">${svg}</div>`;
 }
 
 // ── Utilities ──
+function byId(id) {
+  if (!elementCache.has(id)) elementCache.set(id, document.getElementById(id));
+  return elementCache.get(id);
+}
+
+function nextRenderRun() {
+  renderRunId += 1;
+  return renderRunId;
+}
+
+function isCurrentRun(runId) {
+  return runId === renderRunId;
+}
+
+function getNavIndex() {
+  if (navIndex) return navIndex;
+
+  navIndex = Array.from(document.querySelectorAll('.nav-item')).map(el => {
+    const label = el.querySelector('.nav-label')?.textContent || '';
+    const num = el.querySelector('.nav-num')?.textContent || '';
+    const file = el.dataset.file || '';
+    return {
+      el,
+      searchText: `${label} ${num} ${file}`.toLowerCase(),
+    };
+  });
+  return navIndex;
+}
+
+function fetchText(filename) {
+  if (fetchCache.has(filename)) return fetchCache.get(filename);
+
+  const pending = fetch(filename)
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      return res.text();
+    })
+    .catch(err => {
+      fetchCache.delete(filename);
+      throw err;
+    });
+
+  fetchCache.set(filename, pending);
+  return pending;
+}
+
+function hashString(str) {
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function isDataFlowDiagram(filename) {
+  return /^open-design-df-\d+-.+\.mmd$/i.test(filename);
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')

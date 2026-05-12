@@ -13,26 +13,26 @@ Flows marked **[Partially Verified]** have been traced from source code but not 
 A user types a message in the web UI. The web frontend POSTs to the daemon's `/api/chat` endpoint. The daemon creates a run record, composes a system prompt, resolves the agent binary, and spawns a child process.
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  participant Browser
-  participant Daemon
-  participant Runs
-  participant Prompts
-  participant Agents
-  participant ChildProcess
-  participant StreamHandler
+flowchart TD
+    A["Browser\nPOST /api/chat\nprojectId · agentId · prompt · model"]
+    B["Daemon: runs.create()\nstatus:queued — in-memory run record\nSSE stream opened → event:start to browser"]
+    C["SQLite: SELECT project\nskill_id · design_system_id · metadata"]
+    D["composeSystemPrompt()\n10-layer system prompt string\n2k–20k characters"]
+    E["stageActiveSkill()\nskill folder copied to CWD\n.od/projects/id/.od-skills/skillId/"]
+    F["buildArgs() + spawnEnvForAgent()\nargv array (prompt via -p or stdin)\nOD_DAEMON_URL · OD_PROJECT_ID · OD_PROJECT_DIR"]
+    G["child_process.spawn(cli, args)\ncwd: .od/projects/id/\nstdout piped to stream handler"]
+    H["Stream handler attached to child stdout\nclaudeStreamHandler / acpSession / piRpcSession\nbased on agent streamFormat"]
+    I["runs.emit(event)\nSSE push to all connected browser clients"]
+    OUT["Browser receives SSE events\ntext_delta · thinking_delta\ntool_use · tool_result · usage · end"]
 
-  Browser->>Daemon: POST /api/chat
-  Daemon->>Runs: runs.create()
-  Runs-->>Browser: SSE start event
-  Daemon->>Prompts: composeSystemPrompt()
-  Daemon->>Agents: buildArgs() / spawnEnvForAgent()
-  Daemon->>Agents: stageActiveSkill()
-  Daemon->>ChildProcess: child_process.spawn(cli, args, {cwd:.od/projects/<id>/})
-  ChildProcess-->>StreamHandler: stdout piped
-  StreamHandler->>Runs: runs.emit(event)
-  Runs-->>Browser: SSE text_delta / tool_use / usage / end
+    A --> B --> C --> D & E
+    D --> F
+    E --> F
+    F --> G --> H --> I --> OUT
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style G fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style OUT fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
 ```
 
 ### Entry Point
@@ -140,14 +140,20 @@ The web UI fetches all available skills, displays them in a grouped picker, and 
 
 ```mermaid
 flowchart LR
-  A[GET /api/skills] --> B[listSkills SKILLS_DIR]
-  B --> C[parse SKILL.md frontmatter]
-  C --> D[grouped picker by scenario]
-  D --> E[user selects skill]
-  E --> F[skillId stored in SQLite]
-  F --> G[on generation: findSkillById]
-  G --> H[skillBody resolved]
-  H --> I[composeSystemPrompt layer 5]
+    A["GET /api/skills"] --> B["listSkills(SKILLS_DIR)"]
+    B --> C["parse SKILL.md frontmatter\nid / name / mode / scenario / craft"]
+    C --> D["grouped picker by scenario\noperations · design · engineering"]
+    D --> E["user selects skill"]
+    E --> F["skillId stored in SQLite\nPATCH /api/projects/:id"]
+    F --> G["on generation: findSkillById()\nalias resolution applied"]
+    G --> H["skillBody resolved\nSKILL.md + references/*.md"]
+    H --> I["composeSystemPrompt()\nlayer 5 — preflight + skill body"]
+    I --> J["stageActiveSkill()\n.od-skills/skillId/ staged in CWD"]
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style F fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style I fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style J fill:#faece7,stroke:#c96442,color:#1a1916
 ```
 
 ### Entry Point
@@ -238,14 +244,19 @@ The web UI fetches all design systems with swatch data, the user picks one in a 
 
 ```mermaid
 flowchart LR
-  A[GET /api/design-systems] --> B[listDesignSystems DS_DIR]
-  B --> C[parse DESIGN.md\ntitle / category / swatches / body]
-  C --> D[picker with color swatches]
-  D --> E[user selects design system]
-  E --> F[designSystemId stored in SQLite]
-  F --> G[on generation: readDesignSystem]
-  G --> H[designSystemBody resolved]
-  H --> I[composeSystemPrompt layer 3]
+    A["GET /api/design-systems"] --> B["listDesignSystems(DS_DIR)"]
+    B --> C["parse DESIGN.md\ntitle · category · swatches · body"]
+    C --> D["extractSwatches()\nup to 4 hex colors\nbg · support · fg · accent"]
+    D --> E["picker with color swatch strips\ngrouped by category"]
+    E --> F["user selects design system"]
+    F --> G["designSystemId stored in SQLite\nPATCH /api/projects/:id"]
+    G --> H["on generation: readDesignSystem()\nfull DESIGN.md re-read each turn"]
+    H --> I["designSystemBody resolved"]
+    I --> J["composeSystemPrompt()\nlayer 3 — authoritative brand tokens\ncolor · typography · spacing"]
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style G fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style J fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
 ```
 
 ### Entry Point
@@ -333,20 +344,35 @@ Before spawning an agent, the daemon assembles the full system prompt by layerin
 
 ```mermaid
 flowchart TD
-  IN[composeSystemPrompt ComposeInput]
-  L1[Layer 1: DISCOVERY_AND_PHILOSOPHY\ndiscovery.ts — always present]
-  L2[Layer 2: BASE_SYSTEM_PROMPT\nofficial-system.ts — always present]
-  L3[Layer 3: designSystemBody\nDESIGN.md — if present]
-  L4[Layer 4: craftBody\nloadCraftSections — if present]
-  L5[Layer 5: derivePreflight + skillBody\nSKILL.md — if present]
-  L6[Layer 6: renderMetadataBlock\nif metadata non-empty]
-  L7[Layer 7: DECK_FRAMEWORK_DIRECTIVE\nif deck mode + no template.html seed]
-  L8[Layer 8: MEDIA_GENERATION_CONTRACT\nif image/video/audio mode]
-  L9[Layer 9: Codex imagegen override\nif agent=codex + gpt-image-* model]
-  L10[Layer 10: critique theater addendum\nif critique.enabled + not media]
-  OUT[parts.join — final system prompt string]
+    IN["composeSystemPrompt(ComposeInput)\napps/daemon/src/prompts/system.ts"]
 
-  IN --> L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7 --> L8 --> L9 --> L10 --> OUT
+    L1["Layer 1 · DISCOVERY_AND_PHILOSOPHY\ndiscovery.ts — always present\nturn-1 form syntax · brand-spec extraction · TodoWrite"]
+    L2["Layer 2 · BASE_SYSTEM_PROMPT\nofficial-system.ts — always present\nidentity · workflow · content-philosophy charter"]
+    L3["Layer 3 · designSystemBody\nDESIGN.md — if designSystemBody non-empty\nauthoritative brand tokens win on token values"]
+    L4["Layer 4 · craftBody\nloadCraftSections() — if craftBody non-empty\ngoverned by brand DESIGN.md above"]
+    L5["Layer 5 · derivePreflight() + skillBody\nSKILL.md — if skillBody non-empty\npre-flight Read directive + workflow"]
+    L6["Layer 6 · renderMetadataBlock()\nif metadata non-empty\nproject intent · fidelity · template snapshots"]
+    L7["Layer 7 · DECK_FRAMEWORK_DIRECTIVE\nif mode=deck AND no template.html seed\nnav/counter/scroll/print stylesheet contract"]
+    L8["Layer 8 · MEDIA_GENERATION_CONTRACT\nif mode = image | video | audio\ngoverned od media generate contract"]
+    L9["Layer 9 · Codex imagegen override\nif agentId=codex AND gpt-image-* model\nuse built-in imagegen instead of CLI"]
+    L10["Layer 10 · critique theater addendum\nif critique.enabled AND not media surface\nrenderPanelPrompt() — pinned last"]
+
+    OUT["parts.join('') → final system prompt\ntypically 2k–20k characters"]
+
+    IN --> L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7 --> L8 --> L9 --> L10 --> OUT
+
+    style IN fill:#1c2333,stroke:#1c2333,color:#ffffff
+    style L1 fill:#faece7,stroke:#c96442,color:#1a1916
+    style L2 fill:#faece7,stroke:#c96442,color:#1a1916
+    style L3 fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style L4 fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style L5 fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style L6 fill:#f3f0e8,stroke:#706d65,color:#1a1916
+    style L7 fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style L8 fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style L9 fill:#f0e6fb,stroke:#7b2d8b,color:#1a1916
+    style L10 fill:#fde8e8,stroke:#c0392b,color:#1a1916
+    style OUT fill:#1c2333,stroke:#1c2333,color:#ffffff
 ```
 
 ### Entry Point
@@ -434,26 +460,33 @@ A single string — the composed system prompt — typically ranging from a few 
 For Claude Code and similar agents that emit JSONL on stdout, the daemon uses `createClaudeStreamHandler()` to parse line-delimited JSON into typed UI events, which are SSE-pushed to the web client.
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  participant Daemon
-  participant ClaudeCode
-  participant StreamParser as StreamParser (claude-stream.ts)
-  participant Runs
-  participant Browser
+flowchart TD
+    A["Daemon: child_process.spawn\n--output-format stream-json --verbose\n--include-partial-messages (if capability-flagged)"]
+    B["Agent stdout: JSONL stream\nline-delimited JSON objects"]
+    C["handler.feed(chunk)\nbuffer accumulates chunks\nnewline splits → JSON.parse per line"]
+    D["handleObject(obj)\ndispatch on obj.type"]
 
-  Daemon->>ClaudeCode: spawn --output-format stream-json --verbose
-  ClaudeCode-->>StreamParser: stdout JSONL line-by-line
-  StreamParser->>StreamParser: feed(chunk) — buffer + JSON.parse
-  StreamParser->>Runs: type:system → status:initializing
-  StreamParser->>Runs: content_block_delta text → text_delta
-  StreamParser->>Runs: content_block_delta thinking → thinking_delta
-  StreamParser->>Runs: tool_use block → tool_use event
-  StreamParser->>Runs: tool_result → tool_result event
-  StreamParser->>Runs: result → usage + costUsd + stopReason
-  Runs-->>Browser: SSE push each event
-  ClaudeCode-->>Daemon: process exit
-  Daemon->>Runs: runs.finish succeeded/failed
+    E["type:system\n→ status event (initializing)"]
+    F["stream_event content_block_delta type:text\n→ text_delta (incremental)"]
+    G["stream_event content_block_delta type:thinking\n→ thinking_delta"]
+    H["stream_event input_json_delta\n→ accumulate tool input in blocks Map\ncontent_block_stop → finalize → tool_use event"]
+    I["type:tool_result\n→ tool_result event"]
+    J["type:result\n→ usage event\ninput_tokens · output_tokens · cache · cost_usd"]
+
+    K["runs.emit(event)\nSSE push to all connected clients"]
+    L["Process exit code 0\nruns.finish(succeeded)"]
+    M["Process exit code ≠ 0\nruns.finish(failed, exitCode)"]
+
+    A --> B --> C --> D
+    D --> E & F & G & H & I & J
+    E & F & G & H & I & J --> K
+    A --> L & M
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style D fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style K fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style L fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style M fill:#fde8e8,stroke:#c0392b,color:#1a1916
 ```
 
 ### Entry Point
@@ -530,25 +563,27 @@ A sequence of typed SSE events delivered to the web client. The primary data for
 For agents using the ACP (Agent Communication Protocol) JSON-RPC over stdio — such as Kimi or Hermes — the daemon drives an `initialize → session/new → session/set_model → session/prompt` lifecycle and maps response events into the same typed UI event format.
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  participant Daemon
-  participant ACPAgent as ACPAgent (Hermes/Kimi/etc)
-  participant MCPBridge
+flowchart TD
+    A["Daemon: child_process.spawn\nHermes / Kimi / Kiro / Kilo / Devin / vibe-acp\ncwd: .od/projects/id/"]
+    B["stdin: initialize\nparams: protocolVersion 1\nstdout: capabilities object"]
+    C["stdin: session/new\nparams: cwd · mcpServers config\nstdout: sessionId string"]
+    D["stdin: session/set_model\nparams: model name\nstdout: ok true"]
+    E["stdin: session/prompt\nparams: systemPrompt + userPrompt\n(composed 10-layer string)"]
+    F{"Agent tool calls\nrequested?"}
+    G["MCP Bridge: tools/call\nsearch_files / get_file / get_artifact\nDaemon HTTP → filesystem BFS"]
+    H["Tool result returned to agent\nvia MCP JSON-RPC response"]
+    I["stdout notifications\nagent_message_chunk → text_delta\nagent_thought_chunk → thinking_delta"]
+    J["runs.emit(event)\nSSE push to Browser"]
+    K["session/close or process exit\nruns.finish(succeeded)\nstageTimeoutMs: 180s enforced"]
 
-  Daemon->>ACPAgent: spawn process
-  Daemon->>ACPAgent: initialize (JSON-RPC over stdin)
-  ACPAgent-->>Daemon: initialize result
-  Daemon->>ACPAgent: session/new { cwd, mcpServers }
-  ACPAgent-->>Daemon: session ID
-  Daemon->>ACPAgent: session/set_model { model }
-  ACPAgent-->>Daemon: ack
-  Daemon->>ACPAgent: session/prompt { systemPrompt, userPrompt }
-  ACPAgent-->>Daemon: agent_message_chunk → text_delta SSE
-  ACPAgent->>MCPBridge: tools/call (search_files / get_file / get_artifact)
-  MCPBridge-->>ACPAgent: tool result
-  ACPAgent-->>Daemon: session/prompt final response
-  Daemon->>ACPAgent: session/close
+    A --> B --> C --> D --> E --> F
+    F -- yes --> G --> H --> F
+    F -- no --> I --> J --> K
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style E fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style J fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style K fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
 ```
 
 ### Entry Point
@@ -622,25 +657,33 @@ Before the agent writes any code, it is directed to read seed and reference file
 
 ```mermaid
 flowchart TD
-  A[derivePreflight detects template.html / checklist.md refs]
-  B[Inject RULE: Read tool before writing code]
-  C[Agent reads .od-skills/id/assets/template.html]
-  D[Agent reads .od-skills/id/references/checklist.md]
-  E[Agent generates HTML output]
-  F[Agent writes output.html to project CWD]
-  G[Agent emits artifact open tag]
-  H[Streams file content to stdout]
-  I[Agent emits artifact close tag]
-  J{P0 lint findings?}
-  K[lintArtifact fullContent]
-  L[renderFindingsForAgent findings]
-  M[Inject lint-feedback as next-turn system message]
-  N[Agent self-corrects — emits new artifact]
+    A["derivePreflight(skillBody)\ndetects assets/template.html\nor references/*.md patterns"]
+    B["Inject pre-flight directive into system prompt\nRULE: Read seed + reference files BEFORE writing"]
+    C["Agent reads .od-skills/id/assets/template.html\n(CWD-relative primary path)"]
+    D["Agent reads .od-skills/id/references/checklist.md\n(and other references/*.md)"]
+    E["Agent generates HTML output\nbinds design tokens into :root block"]
+    F["Agent writes index.html to project CWD\n.od/projects/id/index.html"]
+    G["Agent emits artifact open tag\n&lt;artifact identifier=... type=text/html title=...&gt;"]
+    H["Streams file content to stdout\nas text_delta chunks → ArtifactParser.feed()"]
+    I["Agent emits artifact close tag\n&lt;/artifact&gt;"]
+    K["lintArtifact(fullContent)\napps/daemon/src/lint-artifact.ts"]
+    J{"P0 findings?"}
+    L["P0 violations found\npurple-gradient · trust-gradient\nai-default-indigo · emoji-icon\nlorem-filler · invented-metric\nfiller-copy · scroll-into-view"]
+    M["renderFindingsForAgent(findings)\nformatted Markdown block with fix hints"]
+    N["Inject lint-feedback as system message\nnext turn context — agent self-corrects"]
+    O["Agent emits corrected artifact\n(loop back to G)"]
+    DONE["artifact:end delivered to preview\niframe.srcdoc = fullContent"]
 
-  A --> B --> C --> D --> E --> F --> G --> H --> I --> K
-  K --> J
-  J -- yes --> L --> M --> N
-  J -- no --> END[artifact:end delivered to preview]
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> K
+    K --> J
+    J -- P0 found --> L --> M --> N --> O --> G
+    J -- clean / P1-P2 only --> DONE
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style K fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style J fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style L fill:#fde8e8,stroke:#c0392b,color:#1a1916
+    style DONE fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
 ```
 
 ### Entry Point
@@ -717,24 +760,28 @@ System prompt `derivePreflight()` directive → agent file reads → `<artifact>
 The web UI's artifact preview pane uses a streaming `<artifact>` tag parser to incrementally update an iframe's `srcdoc` attribute as text deltas arrive from the SSE stream.
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  participant Browser
-  participant ArtifactParser
-  participant PreviewIframe
+flowchart TD
+    A["Browser receives SSE text_delta events\nstreaming from Daemon runs.emit()"]
+    B["ArtifactParser.feed(delta)\nappend delta to internal buffer\nstate machine: scanning"]
+    C{"findOpenTag(buffer)"}
+    D["kind:partial\nartifact tag not yet complete\nwait for more input"]
+    E["kind:complete\nparseAttrs()\nidentifier · type · title extracted"]
+    F["emit artifact:start\nbrowser shows loading skeleton in preview pane"]
+    G["state: inside_artifact\naccumulate delta in state.content\nemit artifact:chunk per delta"]
+    H{"findCloseTag(buffer)"}
+    I["emit artifact:end\nidentifier · fullContent string"]
+    J["iframe.srcdoc = fullContent\nbrowser parses and renders HTML\nin sandboxed iframe context"]
+    K["Next artifact in same turn\nparser resets state → scanning"]
 
-  Browser->>ArtifactParser: feed(textDelta) on each SSE text_delta
-  ArtifactParser->>ArtifactParser: state: scanning
-  ArtifactParser->>ArtifactParser: findOpenTag — kind:partial → buffer
-  ArtifactParser->>ArtifactParser: findOpenTag — kind:complete → parse attrs
-  ArtifactParser-->>Browser: emit artifact:start { identifier, type, title }
-  Browser->>PreviewIframe: show loading skeleton
-  ArtifactParser->>ArtifactParser: accumulate content → state: inside_artifact
-  ArtifactParser-->>Browser: emit artifact:chunk { identifier, delta }
-  ArtifactParser->>ArtifactParser: findCloseTag — found
-  ArtifactParser-->>Browser: emit artifact:end { identifier, fullContent }
-  Browser->>PreviewIframe: iframe.srcdoc = fullContent
-  PreviewIframe->>PreviewIframe: render standalone HTML in sandbox
+    A --> B --> C
+    C -- partial --> D --> B
+    C -- complete --> E --> F --> G --> H
+    H -- not found --> G
+    H -- found --> I --> J --> K
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style B fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style J fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
 ```
 
 ### Entry Point
@@ -814,18 +861,35 @@ The user triggers an export from the web UI. Depending on format, the daemon eit
 
 ```mermaid
 flowchart LR
-  A[User triggers export] --> B{format?}
-  B -- zip --> C[GET /api/projects/:id/export?format=zip]
-  C --> D[buildProjectArchive — archiver pkg]
-  D --> E[Content-Disposition: attachment download]
-  B -- html --> F[readProjectFile — single-file artifact]
-  F --> G[serve inline HTML]
-  B -- pdf --> H[browser print dialog on preview iframe]
-  H --> I[print stylesheet from deck framework]
-  B -- pptx --> J[agent-produced .pptx in project CWD]
-  J --> K[daemon serves file download]
-  B -- batch-zip --> L[POST /api/projects/batch/export]
-  L --> M[buildBatchArchive — multi-project ZIP]
+    A["User clicks Export\n(selects format)"] --> B{"format?"}
+
+    B -- "zip" --> C["GET /api/projects/:id/export\n?format=zip"]
+    C --> D["buildProjectArchive(projectDir)\narchiver package → zip buffer"]
+    D --> E["HTTP 200 Content-Disposition: attachment\nfilename=project-name.zip"]
+
+    B -- "batch-zip" --> F["POST /api/projects/batch/export\n{ projectIds: [...] }"]
+    F --> G["buildBatchArchive()\nmulti-project ZIP with subdirs"]
+    G --> E
+
+    B -- "html" --> H["readProjectFile(projectDir, filename)\nserve single-file artifact inline"]
+    H --> I["HTTP 200 text/html\nself-contained single file"]
+
+    B -- "pdf" --> J["browser triggers window.print()\non preview iframe"]
+    J --> K["print stylesheet from deck framework\nor skill-defined @print rules"]
+    K --> L["browser generates PDF client-side\n(no daemon involvement)"]
+
+    B -- "pptx" --> M["agent-produced .pptx in project CWD\n.od/projects/id/output.pptx"]
+    M --> N["daemon serves file download\nGET /api/projects/:id/files/:filename"]
+    N --> E
+
+    B -- "markdown" --> O["readProjectFile() or skill-defined render"]
+    O --> P["HTTP 200 text/markdown\ndirect copy or transformed output"]
+
+    style A fill:#1c2333,stroke:#1c2333,color:#ffffff
+    style B fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style E fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style L fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style P fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
 ```
 
 ### Entry Point
@@ -904,20 +968,26 @@ flowchart LR
 Users who provide their own API keys can call Anthropic, OpenAI, Azure, or Google APIs through the daemon's proxy endpoints. The proxy validates the target URL (SSRF protection), forwards the request, and normalizes the response into SSE.
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  participant Browser
-  participant BYOKProxy as BYOKProxy (daemon)
-  participant AnthropicAPI
+flowchart TD
+    A["Browser\nPOST /api/proxy/anthropic/stream\nbaseUrl · apiKey · model · messages · systemPrompt"]
+    B["Validate required fields\nmissing baseUrl / apiKey / model → HTTP 400"]
+    C["validateExternalApiBaseUrl(baseUrl)\nSSRF check — block private IP ranges\n10.x / 172.16-31.x / 192.168.x / 169.254.x → HTTP 403"]
+    D["Read API key from .od/media-config.json\ndecrypted at runtime\nnever logged"]
+    E{"provider route"}
+    F["POST api.anthropic.com/v1/messages\nstream:true\nx-api-key header"]
+    G["POST OpenAI / Azure / Google endpoint\nappendVersionedApiPath()\nAuthorization: Bearer header"]
+    H["Upstream SSE stream response\nprovider-specific format"]
+    I["Normalize to OD common SSE format\ndelta / end / error events\nauth tokens redacted from error logs"]
+    J["Browser: normalized SSE stream\ntext_delta events feed ArtifactParser\nartifact:start / chunk / end → iframe preview"]
 
-  Browser->>BYOKProxy: POST /api/proxy/anthropic/stream { messages, model, system }
-  BYOKProxy->>BYOKProxy: validate required fields
-  BYOKProxy->>BYOKProxy: validateExternalApiBaseUrl — SSRF check\nrejects 10.x / 172.16-31.x / 192.168.x / 169.254.x
-  BYOKProxy->>BYOKProxy: read API key from .od/media-config.json
-  BYOKProxy->>AnthropicAPI: fetch api.anthropic.com/v1/messages stream:true
-  AnthropicAPI-->>BYOKProxy: SSE stream chunks
-  BYOKProxy->>BYOKProxy: normalize provider-specific SSE format
-  BYOKProxy-->>Browser: normalized SSE events
+    A --> B --> C --> D --> E
+    E -- anthropic --> F --> H
+    E -- openai / azure / google --> G --> H
+    H --> I --> J
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style C fill:#fde8e8,stroke:#c0392b,color:#1a1916
+    style J fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
 ```
 
 ### Entry Point
@@ -991,23 +1061,33 @@ When an agent produces an artifact containing P0 anti-slop tropes (purple gradie
 
 ```mermaid
 flowchart TD
-  A[artifact:end fires — fullContent available]
-  B[POST /api/artifacts/save]
-  C[lintArtifact rawHtml]
-  D{P0 findings?}
-  E[P0: purple-gradient\ntrust-gradient\nai-default-indigo\nemoji-icon\nlorem-filler\ninvented-metric\nfiller-copy\nscroll-into-view\nslide-theme-missing\nall-caps-no-tracking]
-  F[P1/P2 advisories\nexternal-image / raw-hex\naccent-overuse / missing-section-anchor\nslide-rhythm]
-  G[renderFindingsForAgent findings]
-  H[Markdown lint-feedback block]
-  I[Inject as system message — next turn context]
-  J[Agent self-corrects — emits new artifact]
-  K[Store findings — GET /api/artifacts/lint\nUI badges P0/P1/P2]
+    A["artifact:end fires\nfullContent available in ArtifactParser"]
+    B["POST /api/artifacts/save\nartifact body submitted to daemon"]
+    C["lintArtifact(rawHtml)\napps/daemon/src/lint-artifact.ts\ngrep-style regex scan"]
+    D{"P0 findings?"}
 
-  A --> B --> C --> D
-  D -- P0 found --> E --> G
-  D -- P1/P2 only --> F --> K
-  G --> H --> I --> J
-  J --> A
+    P0["P0 Anti-Slop Violations\npurple-gradient — violet/indigo + linear-gradient\ntrust-gradient — blue→cyan two-stop\nai-default-indigo — solid indigo on buttons\nemoji-icon — emoji used as feature icon\nlorem-filler — lorem ipsum text\ninvented-metric — round percentage claims\nfiller-copy — generic filler text patterns\nscroll-into-view — JS scroll hacks\nslide-theme-missing — deck missing theme\nall-caps-no-tracking — no letter-spacing"]
+
+    P12["P1/P2 Advisories only\nexternal-image · raw-hex-color\naccent-overuse · missing-section-anchor\nslide-rhythm"]
+
+    G["renderFindingsForAgent(findings)\nMarkdown block: id · message · fix · snippet"]
+    H["lint-feedback injected as system message\nnext conversation turn context"]
+    I["Agent reads lint-feedback\nself-corrects — emits new artifact"]
+
+    K["findings stored\nGET /api/artifacts/lint\nUI renders P0/P1/P2 badge counts"]
+
+    A --> B --> C --> D
+    D -- "P0 found" --> P0 --> G --> H --> I --> A
+    D -- "P1/P2 only" --> P12 --> K
+
+    style A fill:#e6f1fb,stroke:#185fa5,color:#1a1916
+    style C fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style D fill:#faeeda,stroke:#854f0b,color:#1a1916
+    style P0 fill:#fde8e8,stroke:#c0392b,color:#1a1916
+    style P12 fill:#f3f0e8,stroke:#706d65,color:#1a1916
+    style G fill:#faece7,stroke:#c96442,color:#1a1916
+    style I fill:#e8f5e9,stroke:#2e7d32,color:#1a1916
+    style K fill:#f3f0e8,stroke:#706d65,color:#1a1916
 ```
 
 ### Entry Point
